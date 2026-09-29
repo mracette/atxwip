@@ -23,6 +23,7 @@
   --radius-lg: 14px;
   --panel-w: 400px;
   --inset: 8px;
+  --header-h: 52px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
@@ -130,8 +131,9 @@ a { color: var(--focus); }
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
-  width: min(640px, calc(100vw - 2 * var(--inset) - 300px));
+  width: min(640px, calc(100vw - 2 * var(--inset)));
 }
+body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(--inset) - var(--panel-w))); }
 .brand { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
 .mark { width: 22px; height: 22px; color: var(--ink); }
 .wordmark {
@@ -204,10 +206,12 @@ a { color: var(--focus); }
 /* Legend */
 .legend {
   position: fixed;
-  top: var(--inset);
-  right: var(--inset);
+  top: calc(2 * var(--inset) + var(--header-h));
+  left: var(--inset);
   z-index: 2;
   width: 280px;
+  max-height: calc(100dvh - 3 * var(--inset) - var(--header-h));
+  overflow-y: auto;
   padding: var(--sp-2) var(--sp-3) var(--sp-3);
 }
 .legend-toggle {
@@ -391,6 +395,12 @@ a { color: var(--focus); }
 .maplibregl-ctrl-attrib a { color: var(--ink-2) !important; }
 .maplibregl-ctrl-group { background: var(--surface) !important; box-shadow: var(--hairline), var(--shadow-float) !important; }
 :root[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
+/* A red north needle is the one use of red: the compass convention outranks the palette. */
+.maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2729%27%20height%3D%2729%27%20viewBox%3D%270%200%2029%2029%27%3E%3Cpath%20fill%3D%27%23D0342C%27%20d%3D%27m10.5%2014%204-8%204%208z%27/%3E%3Cpath%20fill%3D%27%23A6A5A0%27%20d%3D%27m10.5%2016%204%208%204-8z%27/%3E%3C/svg%3E") !important; }
+:root[data-theme='dark'] .maplibregl-ctrl-group button.maplibregl-ctrl-compass .maplibregl-ctrl-icon { filter: none; background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2729%27%20height%3D%2729%27%20viewBox%3D%270%200%2029%2029%27%3E%3Cpath%20fill%3D%27%23FF6B5E%27%20d%3D%27m10.5%2014%204-8%204%208z%27/%3E%3Cpath%20fill%3D%27%235A6D8A%27%20d%3D%27m10.5%2016%204%208%204-8z%27/%3E%3C/svg%3E") !important; }
+/* Controls step left of the open detail panel instead of hiding under it. */
+.maplibregl-ctrl-bottom-right { transition: right var(--dur-med) var(--ease-out); }
+body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(--panel-w) + var(--inset)); }
 .maplibregl-ctrl-attrib-button { filter: none; }
 :root[data-theme='dark'] .maplibregl-ctrl-attrib-button { filter: invert(1); }
 
@@ -400,7 +410,9 @@ a { color: var(--focus); }
   .counter { display: none; }
   .search { min-width: 0; }
   .wordmark { font-size: 17px; }
-  .legend { top: calc(var(--inset) + 56px); width: auto; padding: 4px var(--sp-3); }
+  .legend { top: calc(var(--inset) + 56px); width: auto; max-height: none; overflow: visible; padding: 4px var(--sp-3); }
+  body:has(.panel:not([hidden])) .header { width: auto; }
+  body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: 0; }
   .legend:has(.legend-toggle[aria-expanded='true']) { width: min(280px, calc(100vw - 2 * var(--inset))); padding-bottom: var(--sp-3); }
 
   .panel {

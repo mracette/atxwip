@@ -5,7 +5,7 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import './styles.css';
 import { buildBasemap } from './basemap.ts';
 import { escapeHtml as esc, fmtWhen } from './format.ts';
-import { CLOSURES, hatchImage, MARK, POINTS, PROJECTS, projectLabelLayer, projectLayers, SURVEY_MARK_ICON, surveyMarkImage, surveyMarkLayer } from './layers.ts';
+import { CLOSURES, clusterLayers, hatchImage, MARK, POINTS, PROJECTS, projectLabelLayer, projectLayers, SURVEY_MARK_ICON, surveyMarkImage, surveyMarkLayer } from './layers.ts';
 import { CATEGORY_LABEL, renderPanel, STATUS_GLYPH, STATUS_LABEL } from './panel.ts';
 import { initSheet, type Detent } from './sheet.ts';
 import { TOKENS, type Theme } from './tokens.ts';
@@ -79,7 +79,7 @@ function buildStyle(theme: Theme): StyleSpecification {
       clusterMaxZoom: 11,
       clusterRadius: 44,
     },
-  }, [surveyMarkLayer()]);
+  }, [...clusterLayers(t), surveyMarkLayer()]);
 }
 
 const params = new URLSearchParams(location.search);
@@ -379,7 +379,7 @@ function flyToFeature(f: ProjectFeature) {
   const mobile = isMobile();
   const padding = mobile
     ? { top: 70, bottom: 200, left: 20, right: 20 }
-    : { top: 80, bottom: 60, left: 80, right: 420 };
+    : { top: 80, bottom: 60, left: legendEdge() + 40, right: 420 };
   const [minX, minY, maxX, maxY] = bbox(f);
   // Pull back for tall towers so the whole extrusion stays in frame, not just its base.
   const height = f.properties.height_m ?? (f.properties.floors ?? 0) * 3.6;
@@ -396,6 +396,12 @@ function flyToFeature(f: ProjectFeature) {
     curve: 1.2,
     essential: false,
   });
+}
+
+/** The legend sits over the map's left edge, so framing a project has to clear it. */
+function legendEdge(): number {
+  const legend = $('legend');
+  return legend.hidden ? 0 : legend.getBoundingClientRect().right;
 }
 
 function bbox(f: ProjectFeature): [number, number, number, number] {

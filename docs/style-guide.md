@@ -283,7 +283,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 
 ### 5.2 Layer toggles / legend (one component)
 From Felt and ZoLa: the legend *is* the layer control.
-- Desktop: floating card, top-right, 280px wide, collapsible. Mobile: a "Layers" pill at the top-right that opens a small popover sheet.
+- Desktop: floating card, top-left under the toolbar, 280px wide, collapsible. It stays on the opposite side from the detail panel so the two never overlap. Mobile: a "Layers" pill under the toolbar that opens a small popover sheet.
 - One row per category, 40px tall (44px on touch):
   `[checkbox-swatch] Label ............ count`
   - Swatch 14×14. Square for building categories, a 16×3 line for transport/trails, and orange-ink hazard stripes for the "Roadwork active" sub-row. When the layer is off, the swatch becomes an outlined box with `--line` and the label turns `--ink-3`.
@@ -360,7 +360,8 @@ Put labels after the extrusions, as in Toner. Use `symbol-z-order: "viewport-y"`
 - Mobile: `zoom 13.2`, `pitch 45`, same bearing.
 - Limits: `maxPitch 70`, `minZoom 9.5`, `maxBounds` ≈ Travis/Williamson bbox `[[-98.2, 30.0], [-97.4, 30.65]]`.
 - Below z12: pitch eases to 0 and projects become clustered circles (UrbanToronto pattern), sized by count and colored by the dominant category.
-- A "reset view" control, a "2D/3D" toggle (pitch 0 ↔ 55), and a compass that resets the bearing.
+- A "reset view" control, a "2D/3D" toggle (pitch 0 ↔ 55), and a compass that resets the bearing. The compass needle is red to the north (`#D0342C` light, `#FF6B5E` dark; 4.7:1 and 5.7:1 on `--surface`) and gray to the south. That is the only red in the UI.
+- The zoom and compass controls sit bottom-right and slide left of the detail panel while it is open.
 
 ### 6.3 3D extrusions
 MapLibre gotcha: **`fill-extrusion-opacity` is layer-wide and not data-driven.** So status needs *separate layers* that share one source and are split by filter.

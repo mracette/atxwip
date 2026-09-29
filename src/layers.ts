@@ -167,6 +167,28 @@ export function projectLayers(t: MapTokens, focus?: Category): LayerSpecificatio
       paint: { 'line-color': t.ink, 'line-width': 2, 'line-opacity': ['case', selected, 1, 0] },
     },
     {
+      // Points stand in for everything when zoomed out, and for point-only projects when zoomed in.
+      id: 'proj-point', type: 'circle', source: POINTS,
+      filter: ['all', ['!', ['has', 'point_count']], ['any', ['<', ['zoom'], 12], ['==', ['get', 'geom'], 'Point']]],
+      paint: {
+        'circle-color': stateColor(t, byCategory(t.category)),
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3.5, 14, 6, 17, 9],
+        'circle-stroke-color': t.labelHalo,
+        'circle-stroke-width': ['case', ['==', ['get', 'status'], 'active'], 2, 1],
+        'circle-opacity': dimOpacity(focus, ['case', ['==', ['get', 'status'], 'planned'], 0.55, 1]),
+        'circle-stroke-opacity': dimOpacity(focus, 1),
+      },
+    },
+  ];
+}
+
+/**
+ * Clusters draw above the basemap labels: symbol layers higher in the stack are
+ * placed first, so a place name like "Austin" would otherwise knock out the count.
+ */
+export function clusterLayers(t: MapTokens): LayerSpecification[] {
+  return [
+    {
       id: 'proj-cluster', type: 'circle', source: POINTS, maxzoom: 12,
       filter: ['has', 'point_count'],
       paint: {
@@ -180,21 +202,8 @@ export function projectLayers(t: MapTokens, focus?: Category): LayerSpecificatio
     {
       id: 'proj-cluster-count', type: 'symbol', source: POINTS, maxzoom: 12,
       filter: ['has', 'point_count'],
-      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 11 },
+      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-allow-overlap': true },
       paint: { 'text-color': t.ink },
-    },
-    {
-      // Points stand in for everything when zoomed out, and for point-only projects when zoomed in.
-      id: 'proj-point', type: 'circle', source: POINTS,
-      filter: ['all', ['!', ['has', 'point_count']], ['any', ['<', ['zoom'], 12], ['==', ['get', 'geom'], 'Point']]],
-      paint: {
-        'circle-color': stateColor(t, byCategory(t.category)),
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3.5, 14, 6, 17, 9],
-        'circle-stroke-color': t.labelHalo,
-        'circle-stroke-width': ['case', ['==', ['get', 'status'], 'active'], 2, 1],
-        'circle-opacity': dimOpacity(focus, ['case', ['==', ['get', 'status'], 'planned'], 0.55, 1]),
-        'circle-stroke-opacity': dimOpacity(focus, 1),
-      },
     },
   ];
 }
