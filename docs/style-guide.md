@@ -275,7 +275,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 ## 5. Components
 
 ### 5.1 Header (desktop 52px, mobile 48px)
-- Floating bar across the top: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from every viewport edge so the map still shows around it. The legend and the detail panel both start below it. The search field is capped at 480px and the actions sit at the right end.
+- Floating bar, top-left, up to 640px wide: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from the viewport edge. Don't use a full-width bar, because the map should reach the top edge; a wide bar with little in it reads as app chrome. The legend and the detail panel both start at the height below it. While the panel is open, the bar narrows on smaller screens so it never runs under the panel.
 - Contents: survey-mark icon (20px, `--accent` crosshair on ink circle) + wordmark "AUSTIN WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
 - A small mono counter under the wordmark on desktop: `214 PROJECTS · 61 ACTIVE`. The counter updates with filters and draws on UrbanToronto's stats dashboard.
 

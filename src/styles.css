@@ -126,13 +126,14 @@ a { color: var(--focus); }
   position: fixed;
   top: var(--inset);
   left: var(--inset);
-  right: var(--inset);
   z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  width: min(640px, calc(100vw - 2 * var(--inset)));
 }
+body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(--inset) - var(--panel-w))); }
 .brand { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
 .mark { width: 22px; height: 22px; color: var(--ink); }
 .wordmark {
@@ -149,7 +150,7 @@ a { color: var(--focus); }
   color: var(--ink-3);
   white-space: nowrap;
 }
-.search { position: relative; flex: 1; min-width: 180px; max-width: 480px; }
+.search { position: relative; flex: 1; min-width: 180px; }
 .search input {
   width: 100%;
   height: 34px;
@@ -186,7 +187,7 @@ a { color: var(--focus); }
 }
 .search-results li[aria-selected='true'], .search-results li:hover { background: var(--surface-sunken); }
 .search-results .sub { color: var(--ink-3); font-size: var(--fs-xs); margin-left: auto; white-space: nowrap; }
-.header-actions { display: flex; gap: var(--sp-1); margin-left: auto; }
+.header-actions { display: flex; gap: var(--sp-1); }
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -445,6 +446,7 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
   .panel-scroll { padding-top: 0; }
   .panel-title { font-size: var(--fs-xl); line-height: 28px; }
   .maplibregl-ctrl-bottom-right { margin-bottom: 0; }
+  body:has(.panel:not([hidden])) .header { width: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
