@@ -4,7 +4,7 @@ import type { ProjectInput } from './lib/project.ts';
 /**
  * Hand-checked facts for projects the public datasets describe poorly.
  * Re-verify dates and budgets when editing; each entry cites where its facts came from.
- * Last reviewed 2026-09-28.
+ * Last reviewed 2026-09-29.
  */
 
 /** Overrides applied to a feature produced by a data source, matched by id or by name. */
@@ -20,6 +20,7 @@ export interface Addition {
 }
 
 const CAPEX_URL = 'https://www.txdot.gov/mymobility35/projects/capex-central.html';
+const CAPEX_CORRIDOR = 'I-35 Capital Express Central';
 const CAPEX = 'Part of I-35 Capital Express Central, TxDOT\'s ~$4.5B rebuild of I-35 between US 290 East and SH 71: lowered main lanes, new drainage tunnels and rebuilt crossings.';
 
 /** Applied in order, so later (more specific) entries win. */
@@ -34,6 +35,7 @@ export const OVERRIDES: Override[] = [
       name: 'I-35 Capital Express Central: Holly St to SH 71',
       description: `${CAPEX} This southern segment includes new bridges over Lady Bird Lake.`,
       segments: [{ label: 'Lady Bird Lake segment', start: '2025', end: '2033' }],
+      corridor: CAPEX_CORRIDOR,
     },
   },
   {
@@ -42,6 +44,7 @@ export const OVERRIDES: Override[] = [
       name: 'I-35 Capital Express Central: drainage tunnel',
       description: `${CAPEX} A tunnel bored beneath the corridor carries storm water from MLK to Lady Bird Lake so the lowered highway doesn't flood.`,
       segments: [{ label: 'Drainage tunnel', start: '2025', end: '2029' }],
+      corridor: CAPEX_CORRIDOR,
     },
   },
   {
@@ -50,6 +53,25 @@ export const OVERRIDES: Override[] = [
       name: 'I-35 Capital Express Central: downtown (MLK to Holly)',
       description: `${CAPEX} Downtown, the main lanes drop below street level, which is what makes the city's cap-and-stitch decks possible.`,
       segments: [{ label: 'Downtown segment', start: '2027', end: '2033' }],
+      corridor: CAPEX_CORRIDOR,
+    },
+  },
+  {
+    match: { id: 'txdot-0015-13-438' },
+    set: {
+      name: 'I-35 Capital Express Central: MLK Blvd',
+      description: `${CAPEX} The first segment to start, at the Martin Luther King Jr. Blvd crossing.`,
+      segments: [{ label: 'MLK Blvd segment', start: '2024', end: '2026' }],
+      corridor: CAPEX_CORRIDOR,
+    },
+  },
+  {
+    match: { id: 'txdot-0015-13-432' },
+    set: {
+      name: 'I-35 Capital Express Central: University (US 290 E to MLK)',
+      description: `${CAPEX} This northern segment runs from US 290 East down to MLK, along the east side of the University of Texas campus.`,
+      segments: [{ label: 'University segment', start: '2027', end: '2033' }],
+      corridor: CAPEX_CORRIDOR,
     },
   },
   {

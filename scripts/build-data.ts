@@ -1,12 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { Geometry } from 'geojson';
-import type { DataMeta, ProjectCollection, ProjectFeature, SourceMeta } from '../src/types.ts';
+import type { Feature, Geometry } from 'geojson';
+import type { ClosureFeature, DataMeta, ProjectCollection, ProjectFeature, SourceMeta } from '../src/types.ts';
 import { ADDITIONS, LIGHT_RAIL, OVERRIDES, type Override } from './curated.ts';
 import { COA, queryLayer } from './lib/arcgis.ts';
 import { mergeLines } from './lib/geo.ts';
 import { makeProject, type ProjectInput } from './lib/project.ts';
 import { fetchCapitalProjects } from './sources/capital-projects.ts';
+import { fetchDriveTexas, fetchWorkZones } from './sources/closures.ts';
 import { fetchDevelopment } from './sources/development.ts';
 import { fetchMobility } from './sources/mobility.ts';
 import { fetchTrails } from './sources/trails.ts';
@@ -16,11 +17,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const SNAPSHOTS = path.join(ROOT, 'data/snapshots');
 const OUT = path.join(ROOT, 'public/data');
 
-interface Source {
+interface Source<F extends Feature = ProjectFeature> {
   id: string;
   name: string;
   url: string;
-  fetch: () => Promise<ProjectFeature[]>;
+  fetch: () => Promise<F[]>;
   /** A result smaller than this is treated as an upstream fault, not a real change. */
   minCount: number;
 }
@@ -45,11 +46,21 @@ const SOURCES: Source[] = [
   { id: 'curated', name: 'Hand-checked major projects', url: 'https://github.com/mracette/austin-wip/blob/main/scripts/curated.ts', fetch: fetchCurated, minCount: 1 },
 ];
 
-interface Snapshot { fetchedAt: string; features: ProjectFeature[] }
+// Closures describe today, so an old snapshot would show crews that have gone home.
+const driveTexasKey = process.env.DRIVETEXAS_API_KEY;
+const CLOSURE_SOURCES: Source<ClosureFeature>[] = [
+  { id: 'work-zones', name: 'City of Austin right-of-way work zones', url: 'https://data.austintexas.gov/d/qyfh-gwei', fetch: () => fetchWorkZones(), minCount: 100 },
+  ...(driveTexasKey
+    ? [{ id: 'drivetexas', name: 'TxDOT DriveTexas road conditions', url: 'https://drivetexas.org', fetch: () => fetchDriveTexas(driveTexasKey), minCount: 1 }]
+    : []),
+];
+const CLOSURE_SNAPSHOT_MAX_AGE_MS = 3 * 24 * 3600 * 1000;
 
-async function readSnapshot(id: string): Promise<Snapshot | undefined> {
+interface Snapshot<F extends Feature = ProjectFeature> { fetchedAt: string; features: F[] }
+
+async function readSnapshot<F extends Feature>(id: string): Promise<Snapshot<F> | undefined> {
   try {
-    return JSON.parse(await readFile(path.join(SNAPSHOTS, `${id}.json`), 'utf8')) as Snapshot;
+    return JSON.parse(await readFile(path.join(SNAPSHOTS, `${id}.json`), 'utf8')) as Snapshot<F>;
   } catch {
     return undefined;
   }
@@ -59,17 +70,18 @@ async function readSnapshot(id: string): Promise<Snapshot | undefined> {
  * Fetches a source, keeping its last good snapshot when the upstream fails
  * or returns implausibly little. One broken API never blanks the map.
  */
-async function runSource(s: Source): Promise<{ features: ProjectFeature[]; meta: SourceMeta; ok: boolean }> {
+async function runSource<F extends Feature>(s: Source<F>, maxSnapshotAgeMs = Infinity): Promise<{ features: F[]; meta: SourceMeta; ok: boolean }> {
   const started = Date.now();
   try {
     const features = await s.fetch();
     if (features.length < s.minCount) throw new Error(`only ${features.length} features (expected ≥ ${s.minCount})`);
     const fetchedAt = new Date().toISOString();
-    await writeFile(path.join(SNAPSHOTS, `${s.id}.json`), JSON.stringify({ fetchedAt, features } satisfies Snapshot));
+    await writeFile(path.join(SNAPSHOTS, `${s.id}.json`), JSON.stringify({ fetchedAt, features } satisfies Snapshot<F>));
     console.log(`✓ ${s.id}: ${features.length} features in ${((Date.now() - started) / 1000).toFixed(1)}s`);
     return { features, ok: true, meta: { id: s.id, name: s.name, url: s.url, count: features.length, fetchedAt } };
   } catch (err) {
-    const snap = await readSnapshot(s.id);
+    const found = await readSnapshot<F>(s.id);
+    const snap = found && Date.now() - Date.parse(found.fetchedAt) <= maxSnapshotAgeMs ? found : undefined;
     console.warn(`✗ ${s.id}: ${(err as Error).message}${snap ? ` (using snapshot from ${snap.fetchedAt})` : ' (no snapshot)'}`);
     const features = snap?.features ?? [];
     return { features, ok: false, meta: { id: s.id, name: s.name, url: s.url, count: features.length, fetchedAt: snap?.fetchedAt ?? '' } };
@@ -120,7 +132,19 @@ async function main() {
     await writeFile(path.join(OUT, name), json);
     console.log(`Wrote ${list.length} features to ${name} (${(Buffer.byteLength(json) / 1024).toFixed(0)} KB)`);
   }
-  const meta: DataMeta = { generatedAt: new Date().toISOString(), sources: results.map((r) => r.meta) };
+
+  const closureResults = [];
+  for (const s of CLOSURE_SOURCES) closureResults.push(await runSource(s, CLOSURE_SNAPSHOT_MAX_AGE_MS));
+  if (!driveTexasKey) console.log('- drivetexas: skipped (DRIVETEXAS_API_KEY not set)');
+  const closures = JSON.stringify({ type: 'FeatureCollection', features: closureResults.flatMap((r) => r.features) });
+  await writeFile(path.join(OUT, 'closures.json'), closures);
+  console.log(`Wrote ${closureResults.reduce((n, r) => n + r.features.length, 0)} features to closures.json (${(Buffer.byteLength(closures) / 1024).toFixed(0)} KB)`);
+
+  const meta: DataMeta = {
+    generatedAt: new Date().toISOString(),
+    sources: results.map((r) => r.meta),
+    closureSources: closureResults.map((r) => r.meta),
+  };
   await writeFile(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2));
   if (results.every((r) => !r.ok)) process.exitCode = 1;
 }

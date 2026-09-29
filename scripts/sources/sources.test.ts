@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { describe as describeCpe, seasonDate } from './capital-projects.ts';
+import { impact, routeName, workFromName } from './closures.ts';
 import { baseAddress, cleanSitePlanName, cleanWorkDescription, landUseCategory, projectCategory, projectCost } from './development.ts';
 import { isTrail } from './mobility.ts';
 import { formatCsj, highwayName, stageStatus } from './txdot.ts';
@@ -68,4 +69,17 @@ test('mobility projects that are really trails go on the trails layer', () => {
   assert.ok(isTrail('Middle Fiskville SUP - Koenig Ln to Clayton Ln'));
   assert.ok(isTrail('Barton Springs and Stratford SUPs QuarterCent'));
   assert.ok(!isTrail('Burnet Rd from White Horse Trail to US 183'));
+});
+
+test('closure text from city work zones and DriveTexas', () => {
+  assert.equal(workFromName('AE/Mastec/Primoris - W OLTORF ST 1400 BLK - Replace Wiring '), 'Replace Wiring');
+  assert.equal(workFromName('CIP - MUNIZ - NORTHCROSS DRIVE 7622-7840 BLK - SIDEWALK IMPROVEMENTS'), 'Sidewalk Improvements');
+  assert.equal(workFromName('WorkZone Event'), undefined);
+  assert.equal(workFromName('Crew - E DEAN KEETON - LTC'), undefined);
+  assert.equal(impact('all-lanes-closed'), 'closed');
+  assert.equal(impact('some-lanes-closed'), 'partial');
+  assert.equal(routeName('IH0035'), 'I-35');
+  assert.equal(routeName('FM0969'), 'FM 969');
+  assert.equal(routeName('US0183A'), 'US 183A');
+  assert.equal(routeName('BI0020F'), 'BI 20F');
 });

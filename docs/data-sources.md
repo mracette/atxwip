@@ -20,6 +20,8 @@ or returns suspiciously few rows. In CI the snapshots live in the Actions cache.
 | Urban Trails network (Socrata `jdwm-wfps`) | `trails.ts` | Trails in design, construction, or opened in the last year | ~80 |
 | Light rail Phase 1 route (city ArcGIS) | `build-data.ts` | Light rail | 1 |
 | Hand-checked projects | `curated.ts` | Waterline, Confluence, airport, cap and stitch; overrides | 4 + overrides |
+| City right-of-way work zones (Socrata `qyfh-gwei`) | `closures.ts` | Lane closures overlay (`closures.json`) | ~3k in effect today |
+| TxDOT DriveTexas conditions (`api.drivetexas.org`) | `closures.ts` | Lane closures overlay, highways | Only with `DRIVETEXAS_API_KEY` |
 
 ## How development projects are assembled
 
@@ -62,5 +64,16 @@ Status: any Active permit makes a project "under construction"; all Final means
   (`0015-13-428`) is the stable id.
 - **Moped** also lists the I-35 segments; those are skipped in favor of TxDOT's
   records.
+- **Lane closures** ship in their own `closures.json`, loaded only when the
+  viewer turns the overlay on. They describe today, so a failed fetch falls
+  back to a snapshot only if it is under three days old. City work zones repeat
+  one line per direction of travel; identical lines collapse to one.
+- **DriveTexas** needs a free key from api.drivetexas.org, passed as
+  `?key=` and stored as the `DRIVETEXAS_API_KEY` repo secret. Without it the
+  source is skipped. Its statewide feed is cut to the Austin area by bounding
+  box. Field names come from the API's 2018 example file, so check them
+  against the live feed once a key is in hand.
+- **I-35 Capital Express Central** segments share a `corridor` value in
+  `curated.ts`, so any one segment's panel shows the whole corridor's schedule.
 - **OpenStreetMap context buildings** that a curated project draws itself are
   hidden by id in `src/basemap.ts`, or the two extrusions z-fight.

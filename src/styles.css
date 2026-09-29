@@ -459,3 +459,11 @@ a { color: var(--focus); }
 .sub-toggle input { margin: 0; accent-color: var(--cat-residential); }
 .sub-toggle .count { margin-left: auto; font: 400 var(--fs-xs) var(--font-mono); color: var(--ink-3); }
 .sub-toggle:has(input:disabled) { opacity: 0.5; }
+.sub-toggle.closures input { accent-color: var(--cat-transport); }
+
+.tl-text.current { font-weight: 600; fill: var(--ink); }
+.tl-row { cursor: pointer; outline: none; }
+.tl-hit { fill: transparent; }
+.tl-row:hover .tl-hit, .tl-row:focus-visible .tl-hit, .tl-row.active .tl-hit { fill: var(--surface-sunken); }
+.tl-row:focus-visible .tl-hit { stroke: var(--focus); stroke-width: 2; }
+.tooltip .sub-line { display: block; font: 400 var(--fs-xs)/16px var(--font-body); color: var(--ink-2); }

@@ -89,11 +89,14 @@ function stats(f: ProjectFeature): string {
   return html ? `<dl class="stats">${html}</dl>` : '';
 }
 
+/** A timeline row; rows with an `id` stand for another project on the same corridor. */
+export type TimelineRow = Segment & { id?: string; current?: boolean };
+
 /**
  * A dimension-line timeline: year ticks on a hairline, one bar per segment,
  * solid for the past and hatched for the future, with a TODAY marker.
  */
-export function timeline(segments: Segment[], category: Category, today = new Date()): string {
+export function timeline(segments: TimelineRow[], category: Category, today = new Date(), title = 'Schedule'): string {
   const rows = segments.filter((s) => s.start && s.end);
   if (!rows.length) return '';
   const now = today.getUTCFullYear() + today.getUTCMonth() / 12;
@@ -115,12 +118,15 @@ export function timeline(segments: Segment[], category: Category, today = new Da
     const a = x(toYear(s.start));
     const b = Math.max(x(toYear(s.end, 'end')), a + 2);
     const split = Math.min(Math.max(x(now), a), b);
+    const linked = s.id && !s.current;
+    if (linked) svg += `<g class="tl-row" data-segment="${esc(s.id!)}" tabindex="0" role="button" aria-label="${esc(s.label)}, ${fmtWhen(s.start)} to ${fmtWhen(s.end)}"><rect class="tl-hit" x="-4" y="${y - rowH + 8}" width="${W + 8}" height="${rowH}" rx="3"/>`;
     if (rows.length > 1) {
-      svg += `<text x="0" y="${y - 4}" class="tl-text">${esc(s.label)}</text>`;
+      svg += `<text x="0" y="${y - 4}" class="tl-text${s.current ? ' current' : ''}">${esc(s.label)}</text>`;
       svg += `<text x="${W}" y="${y - 4}" text-anchor="end" class="tl-text mono">${fmtWhen(s.start)}–${fmtWhen(s.end)}</text>`;
     }
     svg += `<rect x="${a}" y="${y}" width="${split - a}" height="6" rx="1" fill="${color}"/>`;
     svg += `<rect x="${split}" y="${y}" width="${b - split}" height="6" rx="1" fill="url(#tl-hatch)"/>`;
+    if (linked) svg += '</g>';
   });
   const axisY = height - 16;
   svg += `<line x1="0" x2="${W}" y1="${axisY}" y2="${axisY}" stroke="var(--ink-3)" stroke-width="1"/>`;
@@ -135,8 +141,8 @@ export function timeline(segments: Segment[], category: Category, today = new Da
   svg += `<path d="M${nx - 4} 0h8l-4 6z" fill="var(--accent)"/>`;
   svg += `<text x="${nx + 6}" y="7" class="tl-today">TODAY</text>`;
 
-  return `<span class="eyebrow section-label">Schedule</span>
-    <div class="timeline"><svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Schedule">${svg}</svg></div>`;
+  return `<span class="eyebrow section-label">${esc(title)}</span>
+    <div class="timeline"><svg viewBox="0 0 ${W} ${height}" role="group" aria-label="${esc(title)}">${svg}</svg></div>`;
 }
 
 /** Draws the project's own geometry as a little site plan: hatch fill, north arrow, scale bar. */
@@ -173,11 +179,18 @@ function footprintPlan(f: ProjectFeature, category: Category): string {
   </figure>`;
 }
 
-export function renderPanel(f: ProjectFeature, updatedAt: string | undefined): string {
+/** Every segment on the project's corridor, in start order, with the project's own rows marked. */
+export function corridorRows(f: ProjectFeature, members: ProjectFeature[]): TimelineRow[] {
+  return members
+    .flatMap((m) => parseJson<Segment>(m.properties.segments).map((s) => ({ ...s, id: m.properties.id, current: m.properties.id === f.properties.id })))
+    .sort((a, b) => toYear(a.start) - toYear(b.start) || toYear(a.end, 'end') - toYear(b.end, 'end'));
+}
+
+export function renderPanel(f: ProjectFeature, updatedAt: string | undefined, corridor: ProjectFeature[] = []): string {
   const p = f.properties;
   const h = hero(f);
-  const segments = parseJson<Segment>(p.segments);
-  if (!segments.length && p.start && p.end) segments.push({ label: '', start: p.start, end: p.end });
+  const rows = corridor.length > 1 ? corridorRows(f, corridor) : parseJson<Segment>(p.segments);
+  if (!rows.length && p.start && p.end) rows.push({ label: '', start: p.start, end: p.end });
   const links = parseJson<Link>(p.links);
   const sources = parseJson<Link>(p.sources);
 
@@ -194,7 +207,7 @@ export function renderPanel(f: ProjectFeature, updatedAt: string | undefined): s
     ${h ? `<div class="hero"><span class="hero-value">${esc(h[0])}</span><span class="hero-unit">${h[1]}</span></div>` : ''}
     ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
     ${stats(f)}
-    ${timeline(segments, p.category)}
+    ${timeline(rows, p.category, new Date(), corridor.length > 1 && p.corridor ? `${p.corridor} schedule` : 'Schedule')}
     ${footprintPlan(f, p.category)}
     ${links.length ? `<div class="links">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join('')}</div>` : ''}
     <div class="tick-rule" aria-hidden="true"></div>

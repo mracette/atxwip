@@ -47,6 +47,8 @@ export interface ProjectProps {
   /** Short label for where the geometry came from, e.g. "Site plan boundary". */
   footprint?: string;
   segments?: string;
+  /** Projects sharing a corridor show each other's segments on one timeline. */
+  corridor?: string;
   links?: string;
   sources?: string;
   lon: number;
@@ -67,4 +69,22 @@ export interface SourceMeta {
 export interface DataMeta {
   generatedAt: string;
   sources: SourceMeta[];
+  closureSources?: SourceMeta[];
 }
+
+export type ClosureImpact = 'closed' | 'partial';
+
+/** A lane or road closure in effect today, drawn as an optional overlay. */
+export interface ClosureProps {
+  id: string;
+  road: string;
+  /** What the crew is doing, when the source says. */
+  work?: string;
+  impact: ClosureImpact;
+  /** ISO date. */
+  end?: string;
+  by: 'city' | 'txdot';
+}
+
+export type ClosureFeature = Feature<Geometry, ClosureProps>;
+export type ClosureCollection = FeatureCollection<Geometry, ClosureProps>;

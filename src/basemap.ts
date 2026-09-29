@@ -137,7 +137,8 @@ function labelLayers(t: MapTokens): LayerSpecification[] {
   ];
 }
 
-export function buildBasemap(t: MapTokens, projectLayers: LayerSpecification[], sources: StyleSpecification['sources']): StyleSpecification {
+/** `topLayers` draw above the basemap labels. */
+export function buildBasemap(t: MapTokens, projectLayers: LayerSpecification[], sources: StyleSpecification['sources'], topLayers: LayerSpecification[] = []): StyleSpecification {
   return {
     version: 8,
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -146,6 +147,6 @@ export function buildBasemap(t: MapTokens, projectLayers: LayerSpecification[], 
       ...sources,
     },
     light: { anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.2, 210, 40] },
-    layers: [...groundLayers(t), contextBuildings(t), ...projectLayers, ...labelLayers(t)],
+    layers: [...groundLayers(t), contextBuildings(t), ...projectLayers, ...labelLayers(t), ...topLayers],
   };
 }

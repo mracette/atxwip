@@ -1,15 +1,15 @@
 import * as maplibregl from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { GeoJSONSource, MapGeoJSONFeature, StyleSpecification } from 'maplibre-gl';
-import type { Feature, Point } from 'geojson';
+import type { Feature, FeatureCollection, Point } from 'geojson';
 import './styles.css';
 import { buildBasemap } from './basemap.ts';
-import { escapeHtml as esc } from './format.ts';
-import { hatchImage, POINTS, PROJECTS, projectLabelLayer, projectLayers } from './layers.ts';
+import { escapeHtml as esc, fmtWhen } from './format.ts';
+import { CLOSURES, hatchImage, MARK, POINTS, PROJECTS, projectLabelLayer, projectLayers, SURVEY_MARK_ICON, surveyMarkImage, surveyMarkLayer } from './layers.ts';
 import { CATEGORY_LABEL, renderPanel, STATUS_GLYPH, STATUS_LABEL } from './panel.ts';
 import { initSheet, type Detent } from './sheet.ts';
 import { TOKENS, type Theme } from './tokens.ts';
-import { CATEGORIES, STATUSES, type Category, type DataMeta, type ProjectCollection, type ProjectFeature, type ProjectProps, type Status } from './types.ts';
+import { CATEGORIES, STATUSES, type Category, type ClosureCollection, type ClosureProps, type DataMeta, type ProjectCollection, type ProjectFeature, type ProjectProps, type Status } from './types.ts';
 
 const HOME = { center: [-97.7431, 30.2672] as [number, number], zoom: 14.2, pitch: 55, bearing: -20 };
 const HOME_MOBILE = { ...HOME, zoom: 13.2, pitch: 45 };
@@ -27,6 +27,10 @@ const state = {
   data: { type: 'FeatureCollection', features: [] } as ProjectCollection,
   homes: null as ProjectCollection | null,
   showHomes: false,
+  closures: null as ClosureCollection | null,
+  showClosures: false,
+  /** The legend row being hovered; other categories fade while it is set. */
+  focus: undefined as Category | undefined,
   byId: new Map<string, ProjectFeature>(),
   meta: undefined as DataMeta | undefined,
 };
@@ -47,10 +51,25 @@ function asPoints(features: ProjectFeature[]): Feature<Point, ProjectProps & { g
   }));
 }
 
+const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+function visibleClosures(): FeatureCollection {
+  return state.showClosures && state.closures && state.categories.has('transport') ? state.closures : EMPTY;
+}
+
+function selectedMark(): FeatureCollection {
+  const f = state.selected ? state.byId.get(state.selected) : undefined;
+  return f
+    ? { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [f.properties.lon, f.properties.lat] }, properties: {} }] }
+    : EMPTY;
+}
+
 function buildStyle(theme: Theme): StyleSpecification {
   const t = TOKENS[theme];
   const visible = visibleFeatures();
-  return buildBasemap(t, [...projectLayers(t), projectLabelLayer(t)], {
+  return buildBasemap(t, [...projectLayers(t, state.focus), projectLabelLayer(t, state.focus)], {
+    [CLOSURES]: { type: 'geojson', data: visibleClosures(), generateId: true },
+    [MARK]: { type: 'geojson', data: selectedMark() },
     [PROJECTS]: { type: 'geojson', data: { type: 'FeatureCollection', features: visible }, promoteId: 'id' },
     [POINTS]: {
       type: 'geojson',
@@ -60,7 +79,7 @@ function buildStyle(theme: Theme): StyleSpecification {
       clusterMaxZoom: 11,
       clusterRadius: 44,
     },
-  });
+  }, [surveyMarkLayer()]);
 }
 
 const params = new URLSearchParams(location.search);
@@ -91,6 +110,11 @@ map.addControl(new maplibregl.AttributionControl({
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
 map.setMissingStyleImageResolver((id) => {
+  if (id === SURVEY_MARK_ICON) {
+    const { data, pixelRatio } = surveyMarkImage(TOKENS[state.theme]);
+    map.addImage(id, data, { pixelRatio });
+    return;
+  }
   const cat = id.startsWith('hatch-') ? (id.slice(6) as Category) : null;
   if (!cat || !(cat in TOKENS[state.theme].category) || map.hasImage(id)) return;
   map.addImage(id, hatchImage(TOKENS[state.theme].category[cat]));
@@ -100,6 +124,7 @@ function refreshSources() {
   const visible = visibleFeatures();
   (map.getSource(PROJECTS) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: visible });
   (map.getSource(POINTS) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: asPoints(visible) });
+  (map.getSource(CLOSURES) as GeoJSONSource | undefined)?.setData(visibleClosures());
   renderCounter(visible);
   renderLegend();
 }
@@ -136,7 +161,9 @@ function renderLegend() {
       <span class="count">${c[cat]}</span>
     </button>${cat === 'residential' ? `
     <label class="sub-toggle"><input type="checkbox" id="homes-toggle" ${state.showHomes ? 'checked' : ''} ${state.categories.has('residential') ? '' : 'disabled'} />
-      Include houses &amp; duplexes${state.homes ? ` <span class="count">${state.homes.features.filter((f) => state.statuses.has(f.properties.status)).length.toLocaleString()}</span>` : ''}</label>` : ''}`;
+      Include houses &amp; duplexes${state.homes ? ` <span class="count">${state.homes.features.filter((f) => state.statuses.has(f.properties.status)).length.toLocaleString()}</span>` : ''}</label>` : ''}${cat === 'transport' ? `
+    <label class="sub-toggle closures"><input type="checkbox" id="closures-toggle" ${state.showClosures ? 'checked' : ''} ${state.categories.has('transport') ? '' : 'disabled'} />
+      Show today's lane closures${state.closures ? ` <span class="count">${state.closures.features.length.toLocaleString()}</span>` : ''}</label>` : ''}`;
   }).join('');
   $('status-seg').innerHTML = STATUSES.map((s) => `
     <button type="button" data-status="${s}" aria-pressed="${state.statuses.has(s)}">
@@ -150,17 +177,51 @@ $('category-rows').addEventListener('click', (e) => {
   const cat = row.dataset.cat as Category;
   if (state.categories.has(cat)) state.categories.delete(cat);
   else state.categories.add(cat);
+  setFocus(undefined);
   refreshSources();
   writeUrl();
 });
 $('category-rows').addEventListener('change', async (e) => {
   const box = e.target as HTMLInputElement;
-  if (box.id !== 'homes-toggle') return;
-  box.disabled = true;
-  state.showHomes = box.checked && (await loadHomes());
+  if (box.id === 'homes-toggle') {
+    box.disabled = true;
+    state.showHomes = box.checked && (await loadHomes());
+  } else if (box.id === 'closures-toggle') {
+    box.disabled = true;
+    state.showClosures = box.checked && (await loadClosures());
+  } else return;
   refreshSources();
   writeUrl();
 });
+
+async function loadClosures(): Promise<boolean> {
+  if (state.closures) return true;
+  try {
+    state.closures = await fetch(`${import.meta.env.BASE_URL}data/closures.json`).then((r) => r.json() as Promise<ClosureCollection>);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function setFocus(cat: Category | undefined) {
+  const next = cat && state.categories.has(cat) ? cat : undefined;
+  if (next === state.focus) return;
+  state.focus = next;
+  const t = TOKENS[state.theme];
+  for (const layer of [...projectLayers(t, next), projectLabelLayer(t, next)]) {
+    if (!map.getLayer(layer.id) || !('paint' in layer) || !layer.paint) continue;
+    for (const [k, v] of Object.entries(layer.paint)) map.setPaintProperty(layer.id, k as Parameters<typeof map.setPaintProperty>[1], v);
+  }
+}
+
+$('category-rows').addEventListener('pointerover', (e) => {
+  if (e.pointerType !== 'mouse') return;
+  setFocus((e.target as HTMLElement).closest<HTMLElement>('.cat-row')?.dataset.cat as Category | undefined);
+});
+$('category-rows').addEventListener('pointerleave', () => setFocus(undefined));
+$('category-rows').addEventListener('focusin', (e) => setFocus((e.target as HTMLElement).closest<HTMLElement>('.cat-row')?.dataset.cat as Category | undefined));
+$('category-rows').addEventListener('focusout', () => setFocus(undefined));
 
 async function loadHomes(): Promise<boolean> {
   if (state.homes) return true;
@@ -215,12 +276,15 @@ $('theme-btn').addEventListener('click', () => {
   try {
     localStorage.setItem('theme', state.theme);
   } catch { /* storage can be blocked; the toggle still works for this visit */ }
+  if (map.hasImage(SURVEY_MARK_ICON)) map.removeImage(SURVEY_MARK_ICON);
   map.setStyle(buildStyle(state.theme), { diff: false });
   map.once('idle', () => setFeatureState(state.selected, 'selected', true));
 });
 
 /* ---------- Hover + tooltip ---------- */
 
+const CLOSURE_LAYERS = ['closure-closed', 'closure-partial'];
+let hoveredClosure: string | number | undefined;
 const INTERACTIVE = ['proj-extrude-active', 'proj-extrude-planned', 'proj-extrude-complete', 'proj-footprint', 'proj-ground',
   'proj-line-active', 'proj-line-planned', 'proj-line-planned-trail', 'proj-line-complete', 'proj-point'];
 const tooltip = $('tooltip');
@@ -243,18 +307,39 @@ map.on('mousemove', (e) => {
   map.getCanvas().style.cursor = f ? 'pointer' : '';
   const cluster = map.queryRenderedFeatures(e.point, { layers: ['proj-cluster'] })[0];
   if (cluster) map.getCanvas().style.cursor = 'zoom-in';
-  if (!f || isMobile()) {
+  const closure = f ? undefined : pickClosure(e.point);
+  if (closure?.id !== hoveredClosure) {
+    if (hoveredClosure !== undefined) map.setFeatureState({ source: CLOSURES, id: hoveredClosure }, { hover: false });
+    if (closure?.id !== undefined) map.setFeatureState({ source: CLOSURES, id: closure.id }, { hover: true });
+    hoveredClosure = closure?.id;
+  }
+  if ((!f && !closure) || isMobile()) {
     tooltip.hidden = true;
     return;
   }
-  const p = f.properties as ProjectProps;
-  tooltip.innerHTML = `${esc(p.name)}<span class="sub">${STATUS_GLYPH[p.status]} ${STATUS_LABEL[p.status]} · ${CATEGORY_LABEL[p.category]}</span>`;
+  if (f) {
+    const p = f.properties as ProjectProps;
+    tooltip.innerHTML = `${esc(p.name)}<span class="sub">${STATUS_GLYPH[p.status]} ${STATUS_LABEL[p.status]} · ${CATEGORY_LABEL[p.category]}</span>`;
+  } else {
+    const c = closure!.properties as ClosureProps;
+    const what = c.impact === 'closed' ? 'Road closed' : 'Lanes closed';
+    tooltip.innerHTML = `${esc(c.road)}${c.work ? `<span class="sub-line">${esc(c.work)}</span>` : ''}<span class="sub">${what}${c.end ? ` until ${esc(fmtWhen(c.end))}` : ''} · ${c.by === 'txdot' ? 'TxDOT' : 'City permit'}</span>`;
+  }
   tooltip.style.left = `${e.originalEvent.clientX + 14}px`;
   tooltip.style.top = `${e.originalEvent.clientY + 14}px`;
   tooltip.hidden = false;
 });
+function pickClosure(point: maplibregl.Point): MapGeoJSONFeature | undefined {
+  const layers = CLOSURE_LAYERS.filter((l) => map.getLayer(l));
+  if (!layers.length || !state.showClosures) return undefined;
+  const pad = 4;
+  return map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers })[0];
+}
+
 map.getCanvas().addEventListener('mouseleave', () => {
   tooltip.hidden = true;
+  if (hoveredClosure !== undefined) map.setFeatureState({ source: CLOSURES, id: hoveredClosure }, { hover: false });
+  hoveredClosure = undefined;
   setFeatureState(state.hovered, 'hover', false);
   state.hovered = null;
 });
@@ -264,9 +349,16 @@ map.getCanvas().addEventListener('mouseleave', () => {
 const panel = $('panel');
 const sheet = initSheet(panel, $('grabber'));
 
+function corridorOf(f: ProjectFeature): ProjectFeature[] {
+  const c = f.properties.corridor;
+  return c ? state.data.features.filter((m) => m.properties.corridor === c) : [];
+}
+
 function select(id: string | null, opts: { fly?: boolean; detent?: Detent } = {}) {
   setFeatureState(state.selected, 'selected', false);
+  setSegmentHover(null);
   state.selected = id;
+  (map.getSource(MARK) as GeoJSONSource | undefined)?.setData(selectedMark());
   const f = id ? state.byId.get(id) : undefined;
   if (!f) {
     panel.hidden = true;
@@ -275,7 +367,7 @@ function select(id: string | null, opts: { fly?: boolean; detent?: Detent } = {}
     return;
   }
   setFeatureState(id, 'selected', true);
-  $('panel-content').innerHTML = renderPanel(f, state.meta?.generatedAt);
+  $('panel-content').innerHTML = renderPanel(f, state.meta?.generatedAt, corridorOf(f));
   $('panel-content').scrollTop = 0;
   panel.hidden = false;
   if (isMobile()) sheet.set(opts.detent ?? 'peek');
@@ -328,9 +420,46 @@ map.on('click', (e) => {
   select((f?.properties.id as string | undefined) ?? null);
 });
 
+/* Hovering a corridor timeline row highlights that segment on the map; choosing it opens it. */
+let segmentHover: string | null = null;
+function setSegmentHover(id: string | null) {
+  if (id === segmentHover) return;
+  if (segmentHover !== state.hovered) setFeatureState(segmentHover, 'hover', false);
+  setFeatureState(id, 'hover', true);
+  panel.querySelectorAll<SVGGElement>('.tl-row').forEach((g) => g.classList.toggle('active', g.dataset.segment === id));
+  segmentHover = id;
+}
+
+function segmentAt(target: EventTarget | null): string | null {
+  return (target as Element | null)?.closest<SVGGElement>('[data-segment]')?.dataset.segment ?? null;
+}
+
+panel.addEventListener('pointerover', (e) => setSegmentHover(segmentAt(e.target)));
+panel.addEventListener('pointerleave', () => setSegmentHover(null));
+panel.addEventListener('focusin', (e) => setSegmentHover(segmentAt(e.target)));
+panel.addEventListener('focusout', () => setSegmentHover(null));
 panel.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-close]')) select(null);
+  const seg = segmentAt(e.target);
+  if (seg) chooseProject(seg);
 });
+panel.addEventListener('keydown', (e) => {
+  const seg = segmentAt(e.target);
+  if (seg && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    chooseProject(seg);
+  }
+});
+
+/** Selects a project, turning its layer and status back on if the viewer had hidden them. */
+function chooseProject(id: string) {
+  const f = state.byId.get(id);
+  if (!f) return;
+  state.categories.add(f.properties.category);
+  state.statuses.add(f.properties.status);
+  refreshSources();
+  select(id);
+}
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !$<HTMLDialogElement>('about').open) select(null);
 });
@@ -368,14 +497,9 @@ function renderResults() {
 function chooseResult(i: number) {
   const id = resultIds[i];
   if (!id) return;
-  const f = state.byId.get(id)!;
-  // Make sure the chosen project is visible even if its layer was toggled off.
-  state.categories.add(f.properties.category);
-  state.statuses.add(f.properties.status);
-  refreshSources();
   results.hidden = true;
   searchInput.blur();
-  select(id);
+  chooseProject(id);
 }
 
 searchInput.addEventListener('input', renderResults);
@@ -407,13 +531,15 @@ $('about-btn').addEventListener('click', () => {
     <h2>What's being built in Austin</h2>
     <p>Every colored shape is a project that is planned, under construction, or recently finished. Buildings rise to their permitted height; roads and trails under construction are striped. Click anything for details.</p>
     <h3>Where the data comes from</h3>
-    <ul>${sources.map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>: <span class="mono">${s.count.toLocaleString()}</span> projects</li>`).join('')}</ul>
+    <ul>${sources.map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>: <span class="mono">${s.count.toLocaleString()}</span> projects</li>`).join('')}
+      ${(state.meta?.closureSources ?? []).map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>: <span class="mono">${s.count.toLocaleString()}</span> lane closures</li>`).join('')}</ul>
     <p class="caption">Data refreshed <span class="mono">${esc(state.meta?.generatedAt.slice(0, 10) ?? 'unknown')}</span>. Permits and project schedules change; check the linked source before relying on a date or dollar figure.</p>
     <h3>Reading the map</h3>
     <ul>
       <li><strong>Solid</strong> buildings are under construction. <strong>Ghosted, hatched</strong> ones are planned. <strong>Gray</strong> ones recently finished.</li>
       <li>Heights come from permitted floor counts (about 3.6 m per floor), so they are approximate.</li>
       <li>Zoomed out, projects gather into numbered circles. Click one to zoom in.</li>
+      <li>Turn on <strong>today's lane closures</strong> under Transportation to see streets with work crews in them. Thin solid orange lines are fully closed; dotted lines have some lanes open.</li>
     </ul>
     <p class="caption">Source code on <a href="https://github.com/mracette/austin-wip" target="_blank" rel="noopener">GitHub</a>.</p>`;
   $<HTMLDialogElement>('about').showModal();
@@ -435,6 +561,7 @@ function writeUrl() {
     if (state.categories.size < CATEGORIES.length) q.set('layers', [...state.categories].join(','));
     if (state.statuses.size < STATUSES.length) q.set('status', [...state.statuses].join(','));
     if (state.showHomes) q.set('homes', '1');
+    if (state.showClosures) q.set('closures', '1');
     q.set('view', [c.lat.toFixed(5), c.lng.toFixed(5), map.getZoom().toFixed(2), map.getPitch().toFixed(0), map.getBearing().toFixed(0)].join(','));
     history.replaceState(null, '', `${location.pathname}?${q.toString().replace(/%2C/g, ',')}`);
   }, 250);
@@ -462,6 +589,7 @@ async function load() {
   state.meta = meta;
   state.byId = new Map(data.features.map((f) => [f.properties.id, f]));
   if (params.get('homes') === '1') state.showHomes = await loadHomes();
+  if (params.get('closures') === '1') state.showClosures = await loadClosures();
   await mapLoaded;
   refreshSources();
   const p = params.get('p');
