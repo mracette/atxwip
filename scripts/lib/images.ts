@@ -8,8 +8,6 @@ const UA = 'austin-wip/0.1 (+https://github.com/mracette/austin-wip)';
 const WIDTH = 960;
 /** Anything narrower is a thumbnail or an icon, not something worth a panel hero. */
 const MIN_WIDTH = 480;
-/** A photo reused across more projects than this is a stock or department image, not a picture of any one of them. */
-const MAX_SHARED = 2;
 
 export interface ImageReport {
   failed: { id: string; name: string; url: string; reason: string }[];
@@ -28,17 +26,10 @@ export async function localizeImages(features: ProjectFeature[], cacheDir: strin
   const report: ImageReport = { failed: [], missing: [] };
   const used = new Set<string>();
   const byUrl = new Map<string, Promise<string>>();
-  const uses = new Map<string, number>();
-  for (const f of features) if (f.properties.image) uses.set(f.properties.image, (uses.get(f.properties.image) ?? 0) + 1);
 
   for (const f of features) {
     const url = f.properties.image;
     if (!url || !/^https?:/.test(url)) continue;
-    if (uses.get(url)! > MAX_SHARED) {
-      delete f.properties.image;
-      delete f.properties.imageCredit;
-      continue;
-    }
     const file = `${createHash('sha1').update(url).digest('hex').slice(0, 16)}.webp`;
     if (!byUrl.has(url)) byUrl.set(url, ensureCached(url, path.join(cacheDir, file)).then(() => file));
     try {

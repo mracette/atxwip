@@ -80,8 +80,8 @@ Status: any Active permit makes a project "under construction"; all Final means
   field and from `image`/`imageCredit` set by hand in `curated.ts`. The build
   downloads each one once, saves a 960px WebP in `data/image-cache/` (kept in the
   Actions cache), and ships copies in `public/data/images/`. An image that later
-  vanishes upstream keeps showing. Photos reused by more than two projects are
-  skipped as generic. Many of the city's older Flickr links are dead. Each run
+  vanishes upstream keeps showing. City photos reused by more than two projects
+  are skipped as generic. Many of the city's older Flickr links are dead. Each run
   writes `data/image-report.md`, and CI mirrors it into the open GitHub issue
   "Project images to add": hand-picked images that failed, and big projects
   (10+ floors or $100M+) that still have none.

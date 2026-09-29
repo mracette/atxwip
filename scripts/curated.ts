@@ -4,7 +4,7 @@ import type { ProjectInput } from './lib/project.ts';
 /**
  * Hand-checked facts for projects the public datasets describe poorly.
  * Re-verify dates and budgets when editing; each entry cites where its facts came from.
- * Last reviewed 2026-09-29.
+ * Last reviewed 2026-09-29. Images were checked the same day.
  */
 
 /** Overrides applied to a feature produced by a data source, matched by id or by name. */
@@ -23,8 +23,7 @@ const CAPEX_URL = 'https://www.txdot.gov/mymobility35/projects/capex-central.htm
 const CAPEX_CORRIDOR = 'I-35 Capital Express Central';
 const CAPEX = 'Part of I-35 Capital Express Central, TxDOT\'s ~$4.5B rebuild of I-35 between US 290 East and SH 71: lowered main lanes, new drainage tunnels and rebuilt crossings.';
 
-/** Applied in order, so later (more specific) entries win. */
-export const OVERRIDES: Override[] = [
+const EDITS: Override[] = [
   {
     match: { idPrefix: 'txdot-0015-13-' },
     set: { description: CAPEX },
@@ -109,6 +108,47 @@ export const OVERRIDES: Override[] = [
       links: [{ label: 'City project page', url: 'https://www.austintexas.gov/page/congress-avenue' }],
     },
   },
+];
+
+interface Picture {
+  match: Override['match'];
+  url: string;
+  credit: string;
+  /** Where the image was found, to re-check the credit. */
+  page: string;
+}
+
+const CAPEX_PICTURE = {
+  url: 'https://www.txdot.gov/content/dam/project-sites/mobility35/images/capex-central/capex-central-mlk-blvd-updated-rendering-july1.png',
+  credit: 'Rendering: TxDOT',
+  page: CAPEX_URL,
+};
+
+/** Hand-picked images. The build saves a resized copy, so a link that later breaks keeps working on the map. */
+const PICTURES: Picture[] = [
+  { match: { id: 'curated-waterline' }, url: 'https://www.kpf.com/wp-content/uploads/2025/07/2939_1_000_N458_cropped_2400x2400-1.webp', credit: 'Photo: KPF', page: 'https://www.kpf.com/news/waterline-tops-out-officially-becoming-texas-tallest-tower' },
+  { match: { id: 'parcel-0203031037' }, url: 'https://www.pearlstonepartners.com/wp-content/uploads/2024/07/project_62main-01.jpg', credit: 'Rendering: Pearlstone Partners / STG Design', page: 'https://www.pearlstonepartners.com/portfolio/62-east/' },
+  { match: { id: 'siteplan-SP-2021-0438C(R1)' }, url: 'https://assets.communityimpact.com/uploads/images/2024/07/10/317376.jpg', credit: 'Rendering: DBOX for Austin Capital Partners', page: 'https://communityimpact.com/lake-travis-westlake/development/four-seasons-private-residences-lake-austin-to-begin-construction-this-fall/' },
+  { match: { id: 'siteplan-SPC-2021-0129C' }, url: 'https://www.pappageorgehaymes.com/wp-content/uploads/212793_N62_medium-e1776289105930.jpg', credit: 'Photo: Pappageorge Haymes', page: 'https://www.pappageorgehaymes.com/projects/paseo/' },
+  { match: { id: 'siteplan-SP-2022-1410C.F1' }, url: 'https://sixthandblanco.com/frontend/assets/images/main/6th-elevation.webp', credit: 'Rendering: Herzog & de Meuron', page: 'https://sixthandblanco.com/' },
+  { match: { id: 'cpe-6020.119' }, url: 'https://lmnarchitects.com/wp-content/uploads/2025/03/Austin-Convention-Center-Redevelopment_N5.jpg', credit: 'Rendering: LMN Architects and Page', page: 'https://lmnarchitects.com/austin-convention-center-redevelopment-in-texas' },
+  { match: { id: 'light-rail-phase-1' }, url: 'https://www.atptx.org/wp-content/uploads/2024/12/Rendering-of-Austin-light-rail-station.jpg', credit: 'Rendering: Austin Transit Partnership', page: 'https://www.atptx.org/' },
+  { match: { id: 'curated-aus-concourse-b' }, url: 'https://austin.widen.net/content/94e1126e-5871-4e2f-b637-2741705c0713/web/Airport%20-%20Web_CCB%20Rendering%20%20-%20Updated%20May%202026.png', credit: 'Rendering: Austin-Bergstrom International Airport', page: 'https://www.flyaustin.com/AUSJourney' },
+  { match: { id: 'curated-cap-and-stitch' }, url: 'https://images.foxtv.com/static.fox7austin.com/www.fox7austin.com/content/uploads/2024/03/1920/1080/rendering-of-cap-on-I-35.jpg', credit: 'Rendering: City of Austin', page: 'https://fox7austin.com/news/i-35-freeway-cap-grant-cesar-chavez-fourth-street-austin-texas' },
+  { match: { id: 'curated-confluence' }, url: 'https://austin.widen.net/content/l6gfaiziy7/web/Watershed%20Protection%20-%20Web_MillPhotoStudio-20260606-00018.jpg', credit: 'Photo: Mill Photo Studio for City of Austin', page: 'https://www.austintexas.gov/watershed-protection/confluence' },
+  { match: { name: /^183 North from MoPac/i }, url: 'https://www.183north.com/upload/images/Visualization_Preview.jpg', credit: 'Rendering: Central Texas Regional Mobility Authority', page: 'https://www.183north.com/' },
+  { match: { name: /^Congress Avenue Urban Design Initiative/i }, url: 'https://austin.widen.net/content/850aa9ed-3e88-410d-8f05-e3d4f8a6d4bc/web/2025.10.09-600-Block---2025-Planned-Funded-Improvements.jpg', credit: 'Rendering: City of Austin', page: 'https://www.austintexas.gov/transportation-public-works/congress-avenue' },
+  { match: { id: 'txdot-0015-13-428' }, ...CAPEX_PICTURE },
+  { match: { id: 'txdot-0015-13-433' }, ...CAPEX_PICTURE },
+  { match: { id: 'txdot-0015-13-442' }, ...CAPEX_PICTURE },
+  { match: { id: 'txdot-0015-13-438' }, ...CAPEX_PICTURE },
+  { match: { id: 'txdot-0015-13-432' }, ...CAPEX_PICTURE },
+];
+
+/** Applied in order, so later (more specific) entries win. */
+export const OVERRIDES: Override[] = [
+  ...EDITS,
+  ...PICTURES.map(({ match, url, credit }) => ({ match, set: { image: url, imageCredit: credit } })),
 ];
 
 export const ADDITIONS: Addition[] = [

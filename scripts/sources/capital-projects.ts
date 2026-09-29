@@ -58,6 +58,18 @@ export function imageUrl(v: unknown): string | undefined {
   return typeof url === 'string' && /^https?:\/\//.test(url) ? url.replace(/^http:/, 'https:') : undefined;
 }
 
+/** A photo the feed reuses across more than two projects is a department stock image, not a picture of any one of them. */
+function dropSharedImages(features: ProjectFeature[]) {
+  const uses = new Map<string, number>();
+  for (const f of features) if (f.properties.image) uses.set(f.properties.image, (uses.get(f.properties.image) ?? 0) + 1);
+  for (const f of features) {
+    if (f.properties.image && uses.get(f.properties.image)! > 2) {
+      delete f.properties.image;
+      delete f.properties.imageCredit;
+    }
+  }
+}
+
 export function describe(html: string | null | undefined): { description?: string; address?: string } {
   if (!html) return {};
   const text = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -108,5 +120,6 @@ export async function fetchCapitalProjects(): Promise<ProjectFeature[]> {
       sources: [SOURCE],
     }));
   }
+  dropSharedImages(out);
   return out.sort((a, b) => area(b.geometry) - area(a.geometry));
 }
