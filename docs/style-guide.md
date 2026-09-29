@@ -278,6 +278,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 ### 5.1 Header (desktop 52px, mobile 48px)
 - Floating bar, top-left, up to 640px wide: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from the viewport edge. Don't use a full-width bar, because the map should reach the top edge; a wide bar with little in it reads as app chrome. The legend and the detail panel both start at the height below it. While the panel is open, the bar narrows on smaller screens so it never runs under the panel.
 - Contents: Capitol icon (22px, ink) + wordmark "ATX WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
+- The address bar never tracks the map. A share button (before About) opens a small card with the link, a Copy button and an "Include current view" checkbox that starts unchecked. Checked, the link carries the camera, the open project, the timeline date and layer choices, and a note lists exactly what it includes. A shared link is applied on load and then cleared from the address bar, so it can't be passed on by accident.
 - A small mono counter under the wordmark on desktop: `214 PROJECTS · 61 ACTIVE`. The counter updates with filters and draws on UrbanToronto's stats dashboard.
 
 ### 5.2 Layer toggles / legend (one component)

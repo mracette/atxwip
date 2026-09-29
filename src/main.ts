@@ -200,7 +200,6 @@ $('category-rows').addEventListener('click', (e) => {
   else state.categories.add(cat);
   setFocus(undefined);
   refreshSources();
-  writeUrl();
 });
 $('category-rows').addEventListener('change', async (e) => {
   const box = e.target as HTMLInputElement;
@@ -212,7 +211,6 @@ $('category-rows').addEventListener('change', async (e) => {
     state.showClosures = box.checked && (await loadClosures());
   } else return;
   refreshSources();
-  writeUrl();
 });
 
 async function loadClosures(): Promise<boolean> {
@@ -262,7 +260,6 @@ $('status-seg').addEventListener('click', (e) => {
   if (state.statuses.has(s)) state.statuses.delete(s);
   else state.statuses.add(s);
   refreshSources();
-  writeUrl();
 });
 $('legend-toggle').addEventListener('click', () => {
   const btn = $('legend-toggle');
@@ -314,7 +311,6 @@ function setYear(y: number | null) {
   $('time-now').hidden = state.year === null;
   $('timebar').classList.toggle('scrubbed', state.year !== null);
   refreshSources();
-  writeUrl();
 }
 
 let playTimer: number | undefined;
@@ -449,7 +445,6 @@ function select(id: string | null, opts: { fly?: boolean; detent?: Detent } = {}
   if (!f) {
     panel.hidden = true;
     map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: reducedMotion() ? 0 : 300 });
-    writeUrl();
     return;
   }
   setFeatureState(id, 'selected', true);
@@ -458,7 +453,6 @@ function select(id: string | null, opts: { fly?: boolean; detent?: Detent } = {}
   panel.hidden = false;
   if (isMobile()) sheet.set(opts.detent ?? 'peek');
   if (opts.fly !== false) flyToFeature(f);
-  writeUrl();
 }
 
 function flyToFeature(f: ProjectFeature) {
@@ -555,6 +549,7 @@ function chooseProject(id: string) {
   select(id);
 }
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !sharePop.hidden) return setShareOpen(false);
   if (e.key === 'Escape' && !$<HTMLDialogElement>('about').open) select(null);
 });
 
@@ -643,25 +638,72 @@ $('about').addEventListener('click', (e) => {
   if (e.target === dlg || (e.target as HTMLElement).closest('[data-close-about]')) dlg.close();
 });
 
-/* ---------- URL state ---------- */
+/* ---------- Sharing ---------- */
 
-let urlTimer: number | undefined;
-function writeUrl() {
-  clearTimeout(urlTimer);
-  urlTimer = window.setTimeout(() => {
-    const c = map.getCenter();
-    const q = new URLSearchParams();
-    if (state.selected) q.set('p', state.selected);
-    if (state.categories.size < CATEGORIES.length) q.set('layers', [...state.categories].join(','));
-    if (state.statuses.size < STATUSES.length) q.set('status', [...state.statuses].join(','));
-    if (state.showHomes) q.set('homes', '1');
-    if (state.showClosures) q.set('closures', '1');
-    if (state.year !== null) q.set('year', state.year.toFixed(2));
-    q.set('view', [c.lat.toFixed(5), c.lng.toFixed(5), map.getZoom().toFixed(2), map.getPitch().toFixed(0), map.getBearing().toFixed(0)].join(','));
-    history.replaceState(null, '', `${location.pathname}?${q.toString().replace(/%2C/g, ',')}`);
-  }, 250);
+/*
+ * The address bar never tracks the map, so a copied URL can't carry more than
+ * the person meant. Sharing a particular view is an explicit opt-in.
+ */
+function shareUrl(includeView: boolean): string {
+  const base = `${location.origin}${location.pathname}`;
+  if (!includeView) return base;
+  const c = map.getCenter();
+  const q = new URLSearchParams();
+  if (state.selected) q.set('p', state.selected);
+  if (state.categories.size < CATEGORIES.length) q.set('layers', [...state.categories].join(','));
+  if (state.statuses.size < STATUSES.length) q.set('status', [...state.statuses].join(','));
+  if (state.showHomes) q.set('homes', '1');
+  if (state.showClosures) q.set('closures', '1');
+  if (state.year !== null) q.set('year', state.year.toFixed(2));
+  q.set('view', [c.lat.toFixed(5), c.lng.toFixed(5), map.getZoom().toFixed(2), map.getPitch().toFixed(0), map.getBearing().toFixed(0)].join(','));
+  return `${base}?${q.toString().replace(/%2C/g, ',')}`;
 }
-map.on('moveend', writeUrl);
+
+/** Plain-language list of what an "include current view" link carries. */
+function shareContents(): string {
+  const parts = ['this map position'];
+  const f = state.selected ? state.byId.get(state.selected) : undefined;
+  if (f) parts.push(`the open project (${f.properties.name})`);
+  if (state.year !== null) parts.push(`the timeline at ${yearLabel(state.year)}`);
+  if (state.categories.size < CATEGORIES.length || state.statuses.size < STATUSES.length || state.showHomes || state.showClosures) parts.push('your layer choices');
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]!;
+}
+
+const sharePop = $('share');
+const shareBox = $<HTMLInputElement>('share-view');
+
+function renderShare() {
+  const include = shareBox.checked;
+  $<HTMLInputElement>('share-url').value = shareUrl(include);
+  $('share-note').textContent = include
+    ? `The link opens with ${shareContents()}.`
+    : 'The link opens the map at its default view.';
+  $('share-copy').textContent = 'Copy link';
+}
+
+function setShareOpen(open: boolean) {
+  sharePop.hidden = !open;
+  $('share-btn').setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  shareBox.checked = false;
+  renderShare();
+}
+
+$('share-btn').addEventListener('click', () => setShareOpen(sharePop.hidden === true));
+shareBox.addEventListener('change', renderShare);
+$('share-copy').addEventListener('click', async () => {
+  const input = $<HTMLInputElement>('share-url');
+  try {
+    await navigator.clipboard.writeText(input.value);
+  } catch {
+    input.select();
+    document.execCommand('copy');
+  }
+  $('share-copy').textContent = 'Copied';
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!sharePop.hidden && !(e.target as HTMLElement).closest('#share, #share-btn')) setShareOpen(false);
+});
 
 function readUrlFilters() {
   const layers = params.get('layers')?.split(',').filter((c): c is Category => (CATEGORIES as readonly string[]).includes(c));
@@ -692,6 +734,8 @@ async function load() {
   setYear(state.year);
   const p = params.get('p');
   if (p && state.byId.has(p)) select(p, { fly: !view });
+  // A shared link has done its job once applied; a clean address bar can't be re-shared by accident.
+  if (location.search) history.replaceState(null, '', location.pathname);
 }
 
 load().catch((err) => {

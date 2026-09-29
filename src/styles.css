@@ -554,3 +554,43 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
   body:has(.panel:not([hidden])) .timebar { display: none; }
   .maplibregl-ctrl-bottom-right { bottom: calc(var(--timebar-h) + var(--inset)); }
 }
+
+/* Share */
+.share-pop {
+  position: fixed;
+  z-index: 5;
+  top: calc(2 * var(--inset) + var(--header-h));
+  left: calc(var(--inset) + min(640px, 100vw - 2 * var(--inset)) - 340px);
+  width: 340px;
+  padding: var(--sp-3);
+}
+.share-pop[hidden] { display: none; }
+.share-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.share-row input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font: 400 var(--fs-xs) var(--font-mono);
+}
+.share-copy {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--surface);
+  font: 500 var(--fs-sm) var(--font-body);
+  cursor: pointer;
+}
+.share-check { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); font: 400 var(--fs-sm) var(--font-body); color: var(--ink); cursor: pointer; }
+.share-check input { margin: 0; accent-color: var(--ink); }
+.share-note { margin: var(--sp-2) 0 0; }
+@media (max-width: 767px) {
+  .share-pop { left: var(--inset); right: var(--inset); width: auto; }
+}

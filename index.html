@@ -42,12 +42,25 @@
         <ul id="search-results" class="search-results" role="listbox" hidden></ul>
       </div>
       <div class="header-actions">
+        <button class="icon-btn" id="share-btn" type="button" aria-label="Share" aria-expanded="false" aria-controls="share">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
         <button class="icon-btn" id="about-btn" type="button" aria-label="About and data sources">?</button>
         <button class="icon-btn" id="theme-btn" type="button" aria-label="Toggle dark mode">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a8 8 0 1 0 0 16z" fill="currentColor" /><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
         </button>
       </div>
     </header>
+
+    <div class="card share-pop" id="share" role="dialog" aria-label="Share" hidden>
+      <span class="eyebrow">Share</span>
+      <div class="share-row">
+        <input id="share-url" type="text" readonly aria-label="Link to share" />
+        <button class="share-copy" id="share-copy" type="button">Copy link</button>
+      </div>
+      <label class="share-check"><input type="checkbox" id="share-view" /> Include current view</label>
+      <p class="caption share-note" id="share-note"></p>
+    </div>
 
     <section class="card legend" id="legend" aria-label="Layers">
       <button class="legend-toggle" id="legend-toggle" type="button" aria-expanded="true">
