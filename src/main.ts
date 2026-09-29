@@ -276,18 +276,22 @@ function renderChangesButton() {
   btn.innerHTML = `<span class="label">Recent changes</span><span class="count">${changed.length}</span><span aria-hidden="true">›</span>`;
 }
 
-$('changes-btn').addEventListener('click', () => {
+$('changes-btn').addEventListener('click', () => showChanges());
+
+/** A project opened from the recent-changes list gets a link back to it. */
+let cameFromChanges = false;
+
+function showChanges() {
   select(null);
   $('panel-content').innerHTML = renderChanges(state.data.features, state.meta?.generatedAt);
   $('panel-content').scrollTop = 0;
   panel.hidden = false;
   if (isMobile()) sheet.set('half');
-});
+}
 
 function renderCounter(visible: ProjectFeature[]) {
-  const active = visible.filter((f) => f.properties.status === 'active').length;
-  const when = state.year === null ? '' : `${yearLabel(state.year)}: `;
-  $('counter').textContent = `${when}${visible.length.toLocaleString()} projects · ${active.toLocaleString()} under construction`;
+  const when = state.year === null ? '' : `${yearLabel(state.year)} · `;
+  $('counter').textContent = `${when}${visible.length.toLocaleString()} projects`;
 }
 
 /* ---------- Timeline ---------- */
@@ -448,7 +452,9 @@ function select(id: string | null, opts: { fly?: boolean; detent?: Detent } = {}
     return;
   }
   setFeatureState(id, 'selected', true);
-  $('panel-content').innerHTML = renderPanel(f, state.meta?.generatedAt, corridorOf(f));
+  const back = cameFromChanges ? '<button class="back-btn" type="button" data-back-changes>‹ Recent changes</button>' : '';
+  cameFromChanges = false;
+  $('panel-content').innerHTML = back + renderPanel(f, state.meta?.generatedAt, corridorOf(f));
   $('panel-content').scrollTop = 0;
   panel.hidden = false;
   if (isMobile()) sheet.set(opts.detent ?? 'peek');
@@ -469,7 +475,7 @@ function flyToFeature(f: ProjectFeature) {
   map.flyTo({
     center: cam?.center ?? [f.properties.lon, f.properties.lat],
     zoom: Math.max(cam?.zoom ?? 16, isBig ? 11 : 15),
-    pitch: isBig ? 30 : 55,
+    pitch: map.getPitch(),
     bearing: map.getBearing(),
     padding,
     duration: reducedMotion() ? 0 : 900,
@@ -529,7 +535,11 @@ panel.addEventListener('click', (e) => {
   const seg = segmentAt(e.target);
   if (seg) chooseProject(seg);
   const listed = (e.target as HTMLElement).closest<HTMLElement>('[data-project]')?.dataset.project;
-  if (listed) chooseProject(listed);
+  if (listed) {
+    cameFromChanges = true;
+    chooseProject(listed);
+  }
+  if ((e.target as HTMLElement).closest('[data-back-changes]')) showChanges();
 });
 panel.addEventListener('keydown', (e) => {
   const seg = segmentAt(e.target);

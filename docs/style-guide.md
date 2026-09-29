@@ -279,7 +279,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 - Floating bar, top-left, up to 640px wide: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from the viewport edge. Don't use a full-width bar, because the map should reach the top edge; a wide bar with little in it reads as app chrome. The legend and the detail panel both start at the height below it. While the panel is open, the bar narrows on smaller screens so it never runs under the panel.
 - Contents: Capitol icon (22px, ink) + wordmark "ATX WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
 - The address bar never tracks the map. A share button (before About) opens a small card with the link, a Copy button and an "Include current view" checkbox that starts unchecked. Checked, the link carries the camera, the open project, the timeline date and layer choices, and a note lists exactly what it includes. A shared link is applied on load and then cleared from the address bar, so it can't be passed on by accident.
-- A small mono counter under the wordmark on desktop: `214 PROJECTS · 61 ACTIVE`. The counter updates with filters and draws on UrbanToronto's stats dashboard.
+- A small mono counter under the wordmark on desktop: `214 PROJECTS`, one number only, prefixed with the date while the timeline is scrubbed (`SUMMER 2031 · 214 PROJECTS`). The counter updates with filters and draws on UrbanToronto's stats dashboard.
 
 ### 5.2 Layer toggles / legend (one component)
 From Felt and ZoLa: the legend *is* the layer control.
@@ -417,6 +417,8 @@ paint: {
   - Extrusion color becomes `catSelected`: the darker text-safe tone in light mode, and the category lifted toward white in dark mode. The hue stays the same, with more emphasis.
   - A ground outline `line` layer (2px `--ink` / `--ink` dark, plus a 4px `--bg` casing) around the footprint.
   - A survey-mark symbol at the centroid (crosshair in circle, `--accent` stroke, 28px, `icon-allow-overlap`).
+  - The camera flies to frame the project but keeps the viewer's current tilt and bearing. Selecting never switches between 2D and 3D.
+  - A project opened from the recent-changes list shows a "‹ Recent changes" link at the top of the panel that returns to the list.
   - All other projects dim: switch the three extrusion layers to a desaturated variant with `setPaintProperty` over 240ms (`fill-extrusion-color` transition), not opacity.
 - **Planned footprint hatch**: a `fill` layer with `fill-pattern: "hatch-45"`. Register the pattern at runtime: an 8×8 canvas with a 1px diagonal line in the category color at 60%, one image per category. Add a `line` layer with `line-dasharray [2, 2]` in the category color for the plan outline.
 

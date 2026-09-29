@@ -124,6 +124,7 @@ a { color: var(--focus); }
 
 /* Header */
 .header {
+  container-type: inline-size;
   position: fixed;
   top: var(--inset);
   left: var(--inset);
@@ -151,7 +152,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
   color: var(--ink-3);
   white-space: nowrap;
 }
-.search { position: relative; flex: 1; min-width: 180px; }
+.search { position: relative; flex: 1; min-width: 120px; }
 .search input {
   width: 100%;
   height: 34px;
@@ -188,7 +189,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
 }
 .search-results li[aria-selected='true'], .search-results li:hover { background: var(--surface-sunken); }
 .search-results .sub { color: var(--ink-3); font-size: var(--fs-xs); margin-left: auto; white-space: nowrap; }
-.header-actions { display: flex; gap: var(--sp-1); }
+.header-actions { display: flex; gap: var(--sp-1); flex-shrink: 0; }
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -594,3 +595,20 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
 @media (max-width: 767px) {
   .share-pop { left: var(--inset); right: var(--inset); width: auto; }
 }
+
+/* On a narrow header the counter gives way so the buttons always fit; the legend carries the counts. */
+@container (max-width: 560px) {
+  .counter { display: none; }
+}
+
+.back-btn {
+  display: inline-block;
+  margin-bottom: var(--sp-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 var(--fs-sm) var(--font-body);
+  color: var(--focus);
+  cursor: pointer;
+}
+.back-btn:hover { text-decoration: underline; }
