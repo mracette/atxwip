@@ -21,8 +21,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -30,13 +30,16 @@ jobs:
       - run: npm test
       # Each source keeps its last good result here, so an upstream outage
       # ships yesterday's data for that source instead of dropping it.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: data/snapshots
           key: snapshots-${{ github.run_id }}
           restore-keys: snapshots-
       - run: npm run data
-      - uses: actions/cache/save@v4
+        env:
+          # Optional. Without it, TxDOT highway closures are skipped and only city work zones ship.
+          DRIVETEXAS_API_KEY: ${{ secrets.DRIVETEXAS_API_KEY }}
+      - uses: actions/cache/save@v6
         if: always()
         with:
           path: data/snapshots
@@ -44,7 +47,7 @@ jobs:
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -56,4 +59,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
