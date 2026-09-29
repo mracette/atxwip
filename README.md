@@ -5,8 +5,7 @@ city permits, the I-35 rebuild segment by segment, the new convention center,
 light rail, city capital projects, and new trails. Buildings rise in 3D to
 their permitted height; click anything for details and the source record.
 
-Live at **https://mracette.github.io/austin-wip/** (rebuilt daily from the
-latest public data).
+Live at **https://atxwip.info** (rebuilt daily from the latest public data).
 
 ## Run it
 
