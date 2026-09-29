@@ -62,12 +62,29 @@ export async function fetchWorkZones(now = new Date()): Promise<ClosureFeature[]
 
 const Condition = z.object({
   GLOBALID: z.string(),
-  type: z.string().nullish(),
-  RTE_NM: z.string().nullish(),
-  RDWAY_NM: z.string().nullish(),
+  condition: z.string().nullish(),
+  route_name: z.string().nullish(),
+  roadway: z.string().nullish(),
   description: z.string().nullish(),
-  endTime: z.string().nullish(),
+  end_time: z.string().nullish(),
 });
+
+/**
+ * DriveTexas descriptions open with "- Right lane closed.<br/>- Night work only."
+ * bullets, then a free-text project note. The bullets are the useful summary.
+ */
+export function conditionText(html: string | null | undefined): string | undefined {
+  const bullets = (html ?? '').split(/(?:<br\s*\/?>\s*){2,}/i)[0]!
+    .split(/<br\s*\/?>/i)
+    .map((b) => b.replace(/<[^>]+>/g, '').replace(/^\s*-\s*/, '').trim())
+    .filter(Boolean);
+  const text = bullets.join(' ');
+  return text ? (text.length > 140 ? `${text.slice(0, 139)}…` : text) : undefined;
+}
+
+export function conditionImpact(condition: string | null | undefined, text: string | undefined): ClosureImpact {
+  return /closure/i.test(condition ?? '') || /main lanes closed|roadway is closed|road closed|all lanes closed/i.test(text ?? '') ? 'closed' : 'partial';
+}
 
 /** "IH0035" → "I-35", "FM0969" → "FM 969", "US0183A" → "US 183A". */
 export function routeName(rte: string): string {
@@ -88,17 +105,17 @@ export async function fetchDriveTexas(key: string): Promise<ClosureFeature[]> {
     const parsed = Condition.safeParse(f.properties);
     if (!parsed.success || !f.geometry || !inAustin(f.geometry)) continue;
     const r = parsed.data;
-    if (!/construction|closure/i.test(r.type ?? '')) continue;
-    const text = (r.description ?? '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!/construction|closure/i.test(r.condition ?? '')) continue;
+    const text = conditionText(r.description);
     out.push({
       type: 'Feature',
       geometry: roundGeometry(f.geometry),
       properties: prune({
         id: `dt-${r.GLOBALID}`,
-        road: r.RDWAY_NM?.trim() || routeName(r.RTE_NM ?? 'Highway'),
-        work: text.replace(/^-\s*/, '').slice(0, 140) || undefined,
-        impact: /closure/i.test(r.type ?? '') || /roadway is closed|all lanes/i.test(text) ? 'closed' : 'partial',
-        end: r.endTime?.slice(0, 10),
+        road: r.roadway?.trim() || routeName(r.route_name ?? 'Highway'),
+        work: text,
+        impact: conditionImpact(r.condition, text),
+        end: r.end_time?.slice(0, 10),
         by: 'txdot',
       }),
     });

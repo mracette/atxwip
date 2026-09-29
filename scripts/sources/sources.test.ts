@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { describe as describeCpe, seasonDate } from './capital-projects.ts';
-import { impact, routeName, workFromName } from './closures.ts';
+import { conditionImpact, conditionText, impact, routeName, workFromName } from './closures.ts';
 import { baseAddress, cleanSitePlanName, cleanWorkDescription, landUseCategory, projectCategory, projectCost } from './development.ts';
 import { isTrail } from './mobility.ts';
 import { formatCsj, highwayName, stageStatus } from './txdot.ts';
@@ -82,4 +82,9 @@ test('closure text from city work zones and DriveTexas', () => {
   assert.equal(routeName('FM0969'), 'FM 969');
   assert.equal(routeName('US0183A'), 'US 183A');
   assert.equal(routeName('BI0020F'), 'BI 20F');
+  const main = '- Main lanes closed.<br/>- Motorists should expect delays.<br/>- Nighttime closure only.<br/><br/><br/>IH 35 main lane closure for bridge beam setting';
+  assert.equal(conditionText(main), 'Main lanes closed. Motorists should expect delays. Nighttime closure only.');
+  assert.equal(conditionImpact('Construction', conditionText(main)), 'closed');
+  assert.equal(conditionImpact('Construction', conditionText('- Right lane closed.<br/>- Night work only.')), 'partial');
+  assert.equal(conditionImpact('Closure', undefined), 'closed');
 });

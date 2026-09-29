@@ -71,8 +71,9 @@ Status: any Active permit makes a project "under construction"; all Final means
 - **DriveTexas** needs a free key from api.drivetexas.org, passed as
   `?key=` and stored as the `DRIVETEXAS_API_KEY` repo secret. Without it the
   source is skipped. Its statewide feed is cut to the Austin area by bounding
-  box. Field names come from the API's 2018 example file, so check them
-  against the live feed once a key is in hand.
+  box, which leaves a couple dozen at a time. The live feed uses snake_case
+  fields (`condition`, `route_name`, `roadway`, `end_time`); the API's
+  published example file still shows older uppercase names, so ignore it.
 - **I-35 Capital Express Central** segments share a `corridor` value in
   `curated.ts`, so any one segment's panel shows the whole corridor's schedule.
 - **OpenStreetMap context buildings** that a curated project draws itself are
