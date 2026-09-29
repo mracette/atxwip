@@ -38,7 +38,8 @@ Also looked at but not borrowed from directly: The Pudding's Columbus warehouse-
 - *Guardrails against kitsch:* no stencil or "construction" novelty fonts, no caution-tape borders on UI chrome, no hard-hat icons, and no texture images. Hazard stripes appear in exactly one place: road and rail segments under construction on the map.
 
 Motifs, used sparingly:
-- **Survey mark** ⌖: a crosshair in a circle marks the selected project's centroid on the map and is the app icon.
+- **Survey mark** ⌖: a crosshair in a circle marks the selected project's centroid on the map.
+- **App icon**: a solid silhouette of the Texas Capitol in ink, with a small star on a short stem above the dome. It uses no orange, so orange keeps meaning "work happening now."
 - **Tick rule**: a hairline with small ticks every 8px, used as a section divider in the panel and as the timeline axis.
 - **Coordinate eyebrow**: `30.2672° N  97.7431° W` in mono above the project title.
 - **Plan hatch**: 45° hairline hatching on the ground footprint of *planned* projects, the way unbuilt work is drawn on a site plan.
@@ -276,7 +277,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 
 ### 5.1 Header (desktop 52px, mobile 48px)
 - Floating bar, top-left, up to 640px wide: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from the viewport edge. Don't use a full-width bar, because the map should reach the top edge; a wide bar with little in it reads as app chrome. The legend and the detail panel both start at the height below it. While the panel is open, the bar narrows on smaller screens so it never runs under the panel.
-- Contents: survey-mark icon (20px, `--accent` crosshair on ink circle) + wordmark "AUSTIN WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
+- Contents: Capitol icon (22px, ink) + wordmark "AUSTIN WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
 - A small mono counter under the wordmark on desktop: `214 PROJECTS · 61 ACTIVE`. The counter updates with filters and draws on UrbanToronto's stats dashboard.
 
 ### 5.2 Layer toggles / legend (one component)
