@@ -192,9 +192,7 @@ Never put white text on orange. It is only 3.05:1.
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { /* same block as [data-theme="dark"] below */ }
-}
+/* Light is the default for everyone; dark mode only applies once a visitor picks it with the toggle. */
 :root[data-theme="dark"] {
   --bg: #0E1B2E;
   --surface: #12223A;
@@ -277,7 +275,7 @@ MapLibre glyphs: serve Plex Sans Medium, Plex Mono Regular, and Barlow Condensed
 ## 5. Components
 
 ### 5.1 Header (desktop 52px, mobile 48px)
-- Floating bar, top-left: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from the viewport edge. Don't use a full-width bar, because the map should reach the top edge.
+- Floating bar across the top: `--surface` background, `--hairline` border, `--shadow-float`, `--radius-md`, 8px inset from every viewport edge so the map still shows around it. The legend and the detail panel both start below it. The search field is capped at 480px and the actions sit at the right end.
 - Contents: survey-mark icon (20px, `--accent` crosshair on ink circle) + wordmark "AUSTIN WIP" (Barlow Condensed 600, 20px, tracked +0.04em), then a search field (Plex Sans 13, placeholder "Search projects or addresses"). A theme toggle and an "About / sources" link sit at the right.
 - A small mono counter under the wordmark on desktop: `214 PROJECTS · 61 ACTIVE`. The counter updates with filters and draws on UrbanToronto's stats dashboard.
 
@@ -294,7 +292,7 @@ From Felt and ZoLa: the legend *is* the layer control.
 
 ### 5.3 Project detail panel
 
-**Desktop: side panel.** Right side, `--panel-w` 400px, full height minus a 8px inset, `--radius-lg`, `--surface`, scrolls internally. On open, the map pads by `{right: 416}` so the selected building stays centered in the visible area.
+**Desktop: side panel.** Right side, `--panel-w` 400px, from below the header to an 8px inset at the bottom, `--radius-lg`, `--surface`, scrolls internally. On open, the map pads by `{right: 416}` so the selected building stays centered in the visible area.
 
 Anatomy, top to bottom:
 1. **Eyebrow row**: mono 11 uppercase: `30.2654° N 97.7470° W · DOWNTOWN`. Close button (×, 32px hit) at the right.

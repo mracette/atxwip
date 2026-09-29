@@ -126,14 +126,13 @@ a { color: var(--focus); }
   position: fixed;
   top: var(--inset);
   left: var(--inset);
+  right: var(--inset);
   z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
-  width: min(640px, calc(100vw - 2 * var(--inset)));
 }
-body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(--inset) - var(--panel-w))); }
 .brand { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
 .mark { width: 22px; height: 22px; color: var(--ink); }
 .wordmark {
@@ -150,7 +149,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
   color: var(--ink-3);
   white-space: nowrap;
 }
-.search { position: relative; flex: 1; min-width: 180px; }
+.search { position: relative; flex: 1; min-width: 180px; max-width: 480px; }
 .search input {
   width: 100%;
   height: 34px;
@@ -187,7 +186,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
 }
 .search-results li[aria-selected='true'], .search-results li:hover { background: var(--surface-sunken); }
 .search-results .sub { color: var(--ink-3); font-size: var(--fs-xs); margin-left: auto; white-space: nowrap; }
-.header-actions { display: flex; gap: var(--sp-1); }
+.header-actions { display: flex; gap: var(--sp-1); margin-left: auto; }
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -287,7 +286,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
 .panel {
   position: fixed;
   z-index: 4;
-  top: var(--inset);
+  top: calc(2 * var(--inset) + var(--header-h));
   right: var(--inset);
   bottom: var(--inset);
   width: var(--panel-w);
@@ -411,7 +410,6 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
   .search { min-width: 0; }
   .wordmark { font-size: 17px; }
   .legend { top: calc(var(--inset) + 56px); width: auto; max-height: none; overflow: visible; padding: 4px var(--sp-3); }
-  body:has(.panel:not([hidden])) .header { width: auto; }
   body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: 0; }
   .legend:has(.legend-toggle[aria-expanded='true']) { width: min(280px, calc(100vw - 2 * var(--inset))); padding-bottom: var(--sp-3); }
 
