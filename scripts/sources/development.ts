@@ -108,10 +108,18 @@ export function projectCategory(permits: Pick<Permit, 'SUB_TYPE' | 'TOTAL_NEW_AD
   return [...weight].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'commercial';
 }
 
+/**
+ * Permit floor counts are typed by hand and sometimes hold a square footage or
+ * a typo (a house listed at 1,463 floors). Austin's tallest tower has 74.
+ */
+export function plausibleFloors(n: number | null | undefined, max = 80): number | undefined {
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= max ? n : undefined;
+}
+
 function summarize(permits: Permit[]) {
   const residential = permits.filter((p) => permitCategory(p.SUB_TYPE) === 'residential');
   const units = residential.reduce((s, p) => s + (p.NUMBER_OF_UNITS ?? 0), 0);
-  const floors = Math.max(0, ...permits.map((p) => p.NUMBER_OF_FLOORS ?? 0));
+  const floors = Math.max(0, ...permits.map((p) => plausibleFloors(p.NUMBER_OF_FLOORS) ?? 0));
   const sqft = permits.reduce((s, p) => s + (p.TOTAL_NEW_ADD_FOOTAGE ?? 0), 0);
   const issued = permits.map((p) => p.ISSUE_DATE).filter((d): d is number => !!d);
   const finals = permits.map((p) => p.FINAL_DATE).filter((d): d is number => !!d);
@@ -214,7 +222,7 @@ export async function fetchDevelopment(now = new Date()): Promise<ProjectFeature
       small: true,
       address: titleCase(p.PERMIT_LOCATION ?? ''),
       description: /^R- 102/.test(p.SUB_TYPE) ? 'New accessory apartment' : /^[RC]- 103/.test(p.SUB_TYPE) ? 'New duplex' : 'New single-family house',
-      floors: p.NUMBER_OF_FLOORS ?? undefined,
+      floors: plausibleFloors(p.NUMBER_OF_FLOORS, 5),
       units: p.NUMBER_OF_UNITS && p.NUMBER_OF_UNITS > 1 ? p.NUMBER_OF_UNITS : undefined,
       sqft: p.TOTAL_NEW_ADD_FOOTAGE ?? undefined,
       start: isoDate(p.ISSUE_DATE),
@@ -258,6 +266,7 @@ export async function fetchDevelopment(now = new Date()): Promise<ProjectFeature
       sqft: s?.sqft,
       cost: s?.cost,
       developer: plan.OWNER_ORGANIZATION_NAME ? titleCase(plan.OWNER_ORGANIZATION_NAME) : undefined,
+      filed: isoDate(plan.APPLICATION_START_DATE),
       start: s?.start,
       end: s?.end,
       address: ps?.[0]?.PERMIT_LOCATION ? baseAddress(ps[0].PERMIT_LOCATION) : undefined,

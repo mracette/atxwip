@@ -6,8 +6,9 @@ import './styles.css';
 import { buildBasemap } from './basemap.ts';
 import { escapeHtml as esc, fmtWhen } from './format.ts';
 import { CLOSURES, clusterLayers, hatchImage, MARK, POINTS, PROJECTS, projectLabelLayer, projectLayers, SURVEY_MARK_ICON, surveyMarkImage, surveyMarkLayer } from './layers.ts';
-import { CATEGORY_LABEL, renderPanel, STATUS_GLYPH, STATUS_LABEL } from './panel.ts';
+import { CATEGORY_LABEL, renderChanges, renderPanel, STATUS_GLYPH, STATUS_LABEL } from './panel.ts';
 import { initSheet, type Detent } from './sheet.ts';
+import { statusAt, TIMELINE_MAX, TIMELINE_MIN, yearOf } from './timeline.ts';
 import { TOKENS, type Theme } from './tokens.ts';
 import { CATEGORIES, STATUSES, type Category, type ClosureCollection, type ClosureProps, type DataMeta, type ProjectCollection, type ProjectFeature, type ProjectProps, type Status } from './types.ts';
 
@@ -27,6 +28,8 @@ const state = {
   data: { type: 'FeatureCollection', features: [] } as ProjectCollection,
   homes: null as ProjectCollection | null,
   showHomes: false,
+  /** The date the map is showing, as a fractional year; null means today, as the data says. */
+  year: null as number | null,
   closures: null as ClosureCollection | null,
   showClosures: false,
   /** The legend row being hovered; other categories fade while it is set. */
@@ -39,8 +42,26 @@ function allFeatures(): ProjectFeature[] {
   return state.showHomes && state.homes ? [...state.data.features, ...state.homes.features] : state.data.features;
 }
 
+const NOW = yearOf(new Date());
+
+/** Every project as it stands at the chosen date: status from its schedule, towers part-built while under construction. */
+function timedFeatures(): ProjectFeature[] {
+  const all = allFeatures();
+  if (state.year === null) return all;
+  const out: ProjectFeature[] = [];
+  for (const f of all) {
+    const at = statusAt(f.properties, state.year, NOW);
+    if (!at) continue;
+    const p = { ...f.properties, status: at.status };
+    const full = p.height_m ?? (p.floors ? p.floors * 3.6 : undefined);
+    if (full && at.status === 'active') p.height_m = full * Math.max(0.12, at.progress);
+    out.push({ ...f, properties: p });
+  }
+  return out;
+}
+
 function visibleFeatures(): ProjectFeature[] {
-  return allFeatures().filter((f) => state.categories.has(f.properties.category) && state.statuses.has(f.properties.status));
+  return timedFeatures().filter((f) => state.categories.has(f.properties.category) && state.statuses.has(f.properties.status));
 }
 
 function asPoints(features: ProjectFeature[]): Feature<Point, ProjectProps & { geom: string }>[] {
@@ -139,7 +160,7 @@ function setFeatureState(id: string | null, key: 'selected' | 'hover', value: bo
 
 function counts(): Record<Category, number> {
   const c = Object.fromEntries(CATEGORIES.map((k) => [k, 0])) as Record<Category, number>;
-  for (const f of allFeatures()) if (state.statuses.has(f.properties.status)) c[f.properties.category]++;
+  for (const f of timedFeatures()) if (state.statuses.has(f.properties.status)) c[f.properties.category]++;
   return c;
 }
 
@@ -251,10 +272,75 @@ $('legend-toggle').addEventListener('click', () => {
 });
 if (isMobile()) $('legend-toggle').click();
 
+function renderChangesButton() {
+  const changed = state.data.features.filter((f) => f.properties.change);
+  const btn = $('changes-btn');
+  btn.hidden = !changed.length;
+  btn.innerHTML = `<span class="label">Recent changes</span><span class="count">${changed.length}</span><span aria-hidden="true">›</span>`;
+}
+
+$('changes-btn').addEventListener('click', () => {
+  select(null);
+  $('panel-content').innerHTML = renderChanges(state.data.features, state.meta?.generatedAt);
+  $('panel-content').scrollTop = 0;
+  panel.hidden = false;
+  if (isMobile()) sheet.set('half');
+});
+
 function renderCounter(visible: ProjectFeature[]) {
   const active = visible.filter((f) => f.properties.status === 'active').length;
-  $('counter').textContent = `${visible.length.toLocaleString()} projects · ${active.toLocaleString()} under construction`;
+  const when = state.year === null ? '' : `${yearLabel(state.year)}: `;
+  $('counter').textContent = `${when}${visible.length.toLocaleString()} projects · ${active.toLocaleString()} under construction`;
 }
+
+/* ---------- Timeline ---------- */
+
+const STEP = 0.25;
+const range = $<HTMLInputElement>('time-range');
+Object.assign(range, { min: String(TIMELINE_MIN), max: String(TIMELINE_MAX), step: String(STEP), value: String(NOW) });
+$('time-min').textContent = String(TIMELINE_MIN);
+$('time-max').textContent = String(TIMELINE_MAX);
+
+function yearLabel(y: number): string {
+  const season = ['Early', 'Spring', 'Summer', 'Fall'][Math.min(3, Math.floor((y % 1) * 4))];
+  return `${season} ${Math.floor(y)}`;
+}
+
+function setYear(y: number | null) {
+  // The slider moves in quarters; landing on the current quarter means today.
+  state.year = y === null || Math.abs(y - NOW) < STEP / 2 ? null : y;
+  range.value = String(state.year ?? NOW);
+  $('time-label').textContent = state.year === null ? 'Today' : yearLabel(state.year);
+  $('time-now').hidden = state.year === null;
+  $('timebar').classList.toggle('scrubbed', state.year !== null);
+  refreshSources();
+  writeUrl();
+}
+
+let playTimer: number | undefined;
+function setPlaying(on: boolean) {
+  clearInterval(playTimer);
+  playTimer = undefined;
+  $('timebar').classList.toggle('playing', on);
+  $('time-play').setAttribute('aria-label', on ? 'Pause the timeline' : 'Play the timeline');
+  if (!on) return;
+  if ((state.year ?? NOW) >= TIMELINE_MAX) setYear(TIMELINE_MIN);
+  playTimer = window.setInterval(() => {
+    const next = (state.year ?? NOW) + STEP;
+    if (next > TIMELINE_MAX) return setPlaying(false);
+    setYear(next);
+  }, reducedMotion() ? 900 : 350);
+}
+
+range.addEventListener('input', () => {
+  setPlaying(false);
+  setYear(Number(range.value));
+});
+$('time-play').addEventListener('click', () => setPlaying(playTimer === undefined));
+$('time-now').addEventListener('click', () => {
+  setPlaying(false);
+  setYear(null);
+});
 
 /* ---------- Camera controls ---------- */
 
@@ -423,7 +509,7 @@ map.on('click', (e) => {
     return;
   }
   const f = pick(e.point);
-  select((f?.properties.id as string | undefined) ?? null);
+  if (f || !panel.querySelector('.changes-list')) select((f?.properties.id as string | undefined) ?? null);
 });
 
 /* Hovering a corridor timeline row highlights that segment on the map; choosing it opens it. */
@@ -448,6 +534,8 @@ panel.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-close]')) select(null);
   const seg = segmentAt(e.target);
   if (seg) chooseProject(seg);
+  const listed = (e.target as HTMLElement).closest<HTMLElement>('[data-project]')?.dataset.project;
+  if (listed) chooseProject(listed);
 });
 panel.addEventListener('keydown', (e) => {
   const seg = segmentAt(e.target);
@@ -568,6 +656,7 @@ function writeUrl() {
     if (state.statuses.size < STATUSES.length) q.set('status', [...state.statuses].join(','));
     if (state.showHomes) q.set('homes', '1');
     if (state.showClosures) q.set('closures', '1');
+    if (state.year !== null) q.set('year', state.year.toFixed(2));
     q.set('view', [c.lat.toFixed(5), c.lng.toFixed(5), map.getZoom().toFixed(2), map.getPitch().toFixed(0), map.getBearing().toFixed(0)].join(','));
     history.replaceState(null, '', `${location.pathname}?${q.toString().replace(/%2C/g, ',')}`);
   }, 250);
@@ -596,8 +685,11 @@ async function load() {
   state.byId = new Map(data.features.map((f) => [f.properties.id, f]));
   if (params.get('homes') === '1') state.showHomes = await loadHomes();
   if (params.get('closures') === '1') state.showClosures = await loadClosures();
+  const year = Number(params.get('year'));
+  if (params.has('year') && year >= TIMELINE_MIN && year <= TIMELINE_MAX) state.year = year;
+  renderChangesButton();
   await mapLoaded;
-  refreshSources();
+  setYear(state.year);
   const p = params.get('p');
   if (p && state.byId.has(p)) select(p, { fly: !view });
 }

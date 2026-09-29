@@ -76,5 +76,22 @@ Status: any Active permit makes a project "under construction"; all Final means
   published example file still shows older uppercase names, so ignore it.
 - **I-35 Capital Express Central** segments share a `corridor` value in
   `curated.ts`, so any one segment's panel shows the whole corridor's schedule.
+- **Project images** come from the Capital Projects Explorer's `project_image`
+  field and from `image`/`imageCredit` set by hand in `curated.ts`. The build
+  downloads each one once, saves a 960px WebP in `data/image-cache/` (kept in the
+  Actions cache), and ships copies in `public/data/images/`. An image that later
+  vanishes upstream keeps showing. Photos reused by more than two projects are
+  skipped as generic. Many of the city's older Flickr links are dead. Each run
+  writes `data/image-report.md`, and CI mirrors it into the open GitHub issue
+  "Project images to add": hand-picked images that failed, and big projects
+  (10+ floors or $100M+) that still have none.
+- **Recent changes** tag projects from the last two weeks. "Broke ground" and
+  "finished" use first-permit and final-inspection dates; "plans filed" uses the
+  site plan application date, or failing that the day a project first appeared
+  in the data. `data/history.json` (Actions cache) remembers first appearances.
+  Houses are left out, and a build that adds more than 150 projects at once is
+  treated as a data change rather than news.
+- **Floor counts** are typed by hand on permits and sometimes hold nonsense (a
+  house at 1,463 floors); anything over 80, or over 5 for a house, is dropped.
 - **OpenStreetMap context buildings** that a curated project draws itself are
   hidden by id in `src/basemap.ts`, or the two extrusions z-fight.

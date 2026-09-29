@@ -291,6 +291,15 @@ From Felt and ZoLa: the legend *is* the layer control.
 - Below the categories, a hairline tick-rule divider, then a **status segmented control**: `Planned | Under construction | Complete`. It's multi-select, all on by default, with a mono label and a tiny status glyph each.
 - Footer line: "Height = reported building height" in caption type.
 
+### 5.2a Timeline bar
+- Desktop: floating card, bottom-left under the legend, 280px wide, 64px tall. Mobile: full width at the bottom, hidden while the detail sheet is open.
+- A play button, a slider from 2020 to 2034 in quarter-year steps with the end years in mono below it, and a readout ("Today" or "Summer 2031") with a "Back to today" link while scrubbed.
+- The slider's accent turns `--accent` while it shows a date other than today, because the map is then showing projected work.
+- At a chosen date each project takes the status its schedule implies: hidden before it starts (or planned, for future dates), under construction in between, complete after. Towers under construction rise with their progress. Missing dates are estimated (about two years to build, longer for towers), so the result is approximate.
+
+### 5.2b Recent changes
+- A full-width button under the status control: "Recent changes" and a count. It opens a list in the detail panel, grouped as Plans filed, Broke ground and Finished, each row a category dot, the name and a mono date. Choosing a row opens that project.
+
 ### 5.3 Project detail panel
 
 **Desktop: side panel.** Right side, `--panel-w` 400px, from below the header to an 8px inset at the bottom, `--radius-lg`, `--surface`, scrolls internally. On open, the map pads by `{right: 416}` so the selected building stays centered in the visible area.

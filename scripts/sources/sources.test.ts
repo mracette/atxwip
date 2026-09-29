@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { describe as describeCpe, seasonDate } from './capital-projects.ts';
+import { describe as describeCpe, imageUrl, seasonDate } from './capital-projects.ts';
 import { conditionImpact, conditionText, impact, routeName, workFromName } from './closures.ts';
-import { baseAddress, cleanSitePlanName, cleanWorkDescription, landUseCategory, projectCategory, projectCost } from './development.ts';
+import { baseAddress, cleanSitePlanName, plausibleFloors, cleanWorkDescription, landUseCategory, projectCategory, projectCost } from './development.ts';
 import { isTrail } from './mobility.ts';
 import { formatCsj, highwayName, stageStatus } from './txdot.ts';
 
@@ -17,6 +17,14 @@ test('seasonDate reads the Capital Projects Explorer free-text dates', () => {
 test('describe pulls the summary and location out of CPE description HTML', () => {
   const html = '<p>Convention Center Expansion per City Council Resolution</p><a href="mailto:x">Contact Us</a><br><font size=3>Project Location: 500 East Cesar Chavez</font><br>';
   assert.deepEqual(describeCpe(html), { description: 'Convention Center Expansion per City Council Resolution', address: '500 East Cesar Chavez' });
+});
+
+test('imageUrl reads the CPE photo field in each shape it comes in', () => {
+  assert.equal(imageUrl({ url: 'http://c1.staticflickr.com/5/4399/a_b.jpg' }), 'https://c1.staticflickr.com/5/4399/a_b.jpg');
+  assert.equal(imageUrl([{ url: 'https://x.org/a.jpg' }]), 'https://x.org/a.jpg');
+  assert.equal(imageUrl('https://x.org/b.png'), 'https://x.org/b.png');
+  assert.equal(imageUrl({ url: '' }), undefined);
+  assert.equal(imageUrl(null), undefined);
 });
 
 test('projectCost counts a repeated master valuation once and ignores placeholders', () => {
@@ -40,6 +48,15 @@ test('a tower with substantial office space is mixed use', () => {
     { SUB_TYPE: 'C- 324 Office, Bank & Professional Bldgs', TOTAL_NEW_ADD_FOOTAGE: 250_000, NUMBER_OF_UNITS: 1 },
   ];
   assert.equal(projectCategory(permits), 'commercial');
+});
+
+test('typo floor counts are dropped instead of drawn kilometres tall', () => {
+  assert.equal(plausibleFloors(57), 57);
+  assert.equal(plausibleFloors(1463), undefined);
+  assert.equal(plausibleFloors(40.94), undefined);
+  assert.equal(plausibleFloors(0), undefined);
+  assert.equal(plausibleFloors(3, 5), 3);
+  assert.equal(plausibleFloors(12, 5), undefined);
 });
 
 test('site plan and permit text cleanup', () => {

@@ -12,6 +12,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages
@@ -29,10 +30,14 @@ jobs:
       - run: npm ci
       - run: npm test
       # Each source keeps its last good result here, so an upstream outage
-      # ships yesterday's data for that source instead of dropping it.
+      # ships yesterday's data for that source instead of dropping it. Saved
+      # image copies and the record of when projects first appeared ride along.
       - uses: actions/cache/restore@v6
         with:
-          path: data/snapshots
+          path: |
+            data/snapshots
+            data/image-cache
+            data/history.json
           key: snapshots-${{ github.run_id }}
           restore-keys: snapshots-
       - run: npm run data
@@ -42,8 +47,20 @@ jobs:
       - uses: actions/cache/save@v6
         if: always()
         with:
-          path: data/snapshots
+          path: |
+            data/snapshots
+            data/image-cache
+            data/history.json
           key: snapshots-${{ github.run_id }}
+      - name: Update the project images to-do issue
+        if: github.event_name != 'pull_request' && hashFiles('data/image-report.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title='Project images to add'
+          n=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue edit "$n" --body-file data/image-report.md
+          else gh issue create --title "$title" --body-file data/image-report.md; fi
       - run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/

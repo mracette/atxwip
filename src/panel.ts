@@ -77,6 +77,7 @@ function stats(f: ProjectFeature): string {
     ['Floor area', p.sqft ? `${fmtInt(p.sqft)} sq ft` : undefined],
     ['Cost', p.cost ? fmtMoney(p.cost) : undefined],
     ['Developer', p.developer],
+    ['Plans filed', p.filed && p.status === 'planned' ? fmtWhen(p.filed) : undefined],
     ['Started', p.start ? fmtWhen(p.start) : undefined],
     [p.status === 'complete' ? 'Finished' : 'Expected', p.end ? fmtWhen(p.end) : undefined],
     ['Address', p.address],
@@ -186,6 +187,44 @@ export function corridorRows(f: ProjectFeature, members: ProjectFeature[]): Time
     .sort((a, b) => toYear(a.start) - toYear(b.start) || toYear(a.end, 'end') - toYear(b.end, 'end'));
 }
 
+const CHANGE_GROUPS = [
+  ['new', 'Plans filed'],
+  ['started', 'Broke ground'],
+  ['finished', 'Finished'],
+] as const;
+
+/** The recent-changes list shown in the panel: newest first within each kind of change. */
+export function renderChanges(features: ProjectFeature[], updatedAt: string | undefined): string {
+  const groups = CHANGE_GROUPS.map(([change, label]) => {
+    const items = features
+      .filter((f) => f.properties.change === change)
+      .sort((a, b) => (b.properties.changedAt ?? '').localeCompare(a.properties.changedAt ?? ''));
+    if (!items.length) return '';
+    return `<h3 class="changes-group">${label} <span class="count">${items.length}</span></h3>
+      <ul class="changes-list">${items.map((f) => `<li><button type="button" data-project="${esc(f.properties.id)}">
+        <span class="dot" style="background:var(--cat-${f.properties.category})"></span>
+        <span class="name">${esc(f.properties.name)}</span>
+        <span class="when">${esc(fmtDay(f.properties.changedAt))}</span>
+      </button></li>`).join('')}</ul>`;
+  }).join('');
+  return `
+    <div class="panel-top">
+      <span class="eyebrow mono">Last two weeks</span>
+      <button class="close-btn" type="button" data-close aria-label="Close">×</button>
+    </div>
+    <h2 class="panel-title">What's changed</h2>
+    <p class="desc">New plans filed with the city, projects that got their first building permit, and projects that passed final inspection.</p>
+    ${groups || '<p class="desc">Nothing new in the last two weeks.</p>'}
+    <div class="tick-rule" aria-hidden="true"></div>
+    ${updatedAt ? `<p class="source-line">Updated&nbsp; ${esc(updatedAt.slice(0, 10))}</p>` : ''}`;
+}
+
+/** "2026-09-25" → "Sep 25". */
+function fmtDay(s: string | undefined): string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return '';
+  return new Date(`${s.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 export function renderPanel(f: ProjectFeature, updatedAt: string | undefined, corridor: ProjectFeature[] = []): string {
   const p = f.properties;
   const h = hero(f);
@@ -204,11 +243,12 @@ export function renderPanel(f: ProjectFeature, updatedAt: string | undefined, co
       ${statusChip(p.status)}
       <span class="chip cat"><span class="dot" style="background:var(--cat-${p.category})"></span>${CATEGORY_LABEL[p.category]}</span>
     </div>
+    ${p.image ? `<figure class="hero-img"><img src="${esc(import.meta.env.BASE_URL + p.image)}" alt="${esc(p.name)}" loading="lazy" />${p.imageCredit ? `<figcaption class="source-line">${esc(p.imageCredit)}</figcaption>` : ''}</figure>` : ''}
     ${h ? `<div class="hero"><span class="hero-value">${esc(h[0])}</span><span class="hero-unit">${h[1]}</span></div>` : ''}
     ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
     ${stats(f)}
     ${timeline(rows, p.category, new Date(), corridor.length > 1 && p.corridor ? `${p.corridor} schedule` : 'Schedule')}
-    ${footprintPlan(f, p.category)}
+    ${p.image ? '' : footprintPlan(f, p.category)}
     ${links.length ? `<div class="links">${links.map((l) => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join('')}</div>` : ''}
     <div class="tick-rule" aria-hidden="true"></div>
     <p class="source-line">Source&nbsp; ${sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join(' · ') || 'Hand-curated'}</p>

@@ -24,6 +24,7 @@
   --panel-w: 400px;
   --inset: 8px;
   --header-h: 52px;
+  --timebar-h: 64px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
@@ -210,7 +211,7 @@ body:has(.panel:not([hidden])) .header { width: min(640px, calc(100vw - 3 * var(
   left: var(--inset);
   z-index: 2;
   width: 280px;
-  max-height: calc(100dvh - 3 * var(--inset) - var(--header-h));
+  max-height: calc(100dvh - 4 * var(--inset) - var(--header-h) - var(--timebar-h));
   overflow-y: auto;
   padding: var(--sp-2) var(--sp-3) var(--sp-3);
 }
@@ -479,3 +480,77 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
 .tl-row:hover .tl-hit, .tl-row:focus-visible .tl-hit, .tl-row.active .tl-hit { fill: var(--surface-sunken); }
 .tl-row:focus-visible .tl-hit { stroke: var(--focus); stroke-width: 2; }
 .tooltip .sub-line { display: block; font: 400 var(--fs-xs)/16px var(--font-body); color: var(--ink-2); }
+
+.hero-img { margin: var(--sp-4) 0 0; }
+.hero-img img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); background: var(--surface-sunken); }
+.hero-img figcaption { margin-top: var(--sp-1); }
+
+.changes-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font: 500 var(--fs-sm) var(--font-body);
+  cursor: pointer;
+  text-align: left;
+}
+.changes-btn[hidden] { display: none; }
+.changes-btn:hover { box-shadow: inset 0 0 0 1px var(--line); }
+.changes-btn .count { margin-left: auto; font: 400 var(--fs-2xs) var(--font-mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.changes-group { margin: var(--sp-5) 0 var(--sp-2); font: 500 var(--fs-2xs) var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+.changes-group .count { color: var(--ink-3); margin-left: var(--sp-1); }
+.changes-list { list-style: none; margin: 0; padding: 0; }
+.changes-list button {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--sp-1) var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink);
+  font: 400 var(--fs-sm) var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.changes-list button:hover, .changes-list button:focus-visible { background: var(--surface-sunken); }
+.changes-list .dot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%; }
+.changes-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.changes-list .when { font: 400 var(--fs-xs) var(--font-mono); color: var(--ink-3); white-space: nowrap; }
+
+/* Timeline */
+.timebar {
+  position: fixed;
+  left: var(--inset);
+  bottom: var(--inset);
+  z-index: 2;
+  width: 280px;
+  height: var(--timebar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+}
+.timebar .icon-btn .pause, .timebar.playing .icon-btn .play { display: none; }
+.timebar.playing .icon-btn .pause { display: inline; }
+.time-track { flex: 1; min-width: 0; }
+.time-track input { width: 100%; margin: 0; accent-color: var(--ink-3); cursor: pointer; }
+.timebar.scrubbed .time-track input, .timebar.playing .time-track input { accent-color: var(--accent); }
+.time-ends { display: flex; justify-content: space-between; font-size: var(--fs-2xs); color: var(--ink-3); }
+.time-readout { display: flex; flex-direction: column; align-items: flex-end; min-width: 84px; }
+.time-label { font: 500 var(--fs-sm) var(--font-mono); color: var(--ink); white-space: nowrap; }
+.time-now { padding: 0; border: 0; background: none; font: 400 var(--fs-2xs) var(--font-body); color: var(--focus); cursor: pointer; }
+.time-now[hidden] { display: none; }
+@media (max-width: 767px) {
+  .timebar { right: var(--inset); width: auto; bottom: calc(var(--inset) + env(safe-area-inset-bottom)); }
+  body:has(.panel:not([hidden])) .timebar { display: none; }
+  .maplibregl-ctrl-bottom-right { bottom: calc(var(--timebar-h) + var(--inset)); }
+}

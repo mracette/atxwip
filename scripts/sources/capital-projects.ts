@@ -34,6 +34,7 @@ const Row = z.object({
   project_start_date: z.string().nullish(),
   project_end_date: z.string().nullish(),
   project_column_filter_entry3: z.string().nullish(),
+  project_image: z.unknown().optional(),
   shapes: z.union([z.string(), z.array(z.object({ the_geom: z.unknown() }))]).nullish(),
 });
 
@@ -48,6 +49,13 @@ export function seasonDate(s: string | null | undefined): string | undefined {
   let year = Number(m[2]);
   if (season === 'winter' && m[3]) year += 1;
   return season ? `${year}-${SEASON_MONTH[season]}` : String(year);
+}
+
+/** The feed stores its photo as `{ url }`, occasionally as a list or a bare string. */
+export function imageUrl(v: unknown): string | undefined {
+  const first = Array.isArray(v) ? v[0] : v;
+  const url = typeof first === 'string' ? first : (first as { url?: unknown } | null)?.url;
+  return typeof url === 'string' && /^https?:\/\//.test(url) ? url.replace(/^http:/, 'https:') : undefined;
 }
 
 export function describe(html: string | null | undefined): { description?: string; address?: string } {
@@ -91,6 +99,8 @@ export async function fetchCapitalProjects(): Promise<ProjectFeature[]> {
       developer: r.project_column_filter_entry3 ?? undefined,
       start: seasonDate(r.project_start_date),
       end: seasonDate(r.project_end_date),
+      image: imageUrl(r.project_image),
+      imageCredit: imageUrl(r.project_image) ? 'Photo: City of Austin' : undefined,
       footprint: 'Project area',
       // Capital project shapes are work areas (whole parks, road rights-of-way), not buildings.
       flat: true,

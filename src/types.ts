@@ -36,6 +36,8 @@ export interface ProjectProps {
   sqft?: number;
   cost?: number;
   developer?: string;
+  /** ISO date the plans were submitted to the city. */
+  filed?: string;
   /** ISO date or year. */
   start?: string;
   end?: string;
@@ -44,6 +46,14 @@ export interface ProjectProps {
   small?: boolean;
   /** Large sites drawn as a ground footprint instead of an extrusion. */
   flat?: boolean;
+  /** Set when the project was added, broke ground or finished in the two weeks before the build. */
+  change?: 'new' | 'started' | 'finished';
+  /** ISO date of that change. */
+  changedAt?: string;
+  /** A remote URL while building; a path under data/images/ once the build has saved a copy. */
+  image?: string;
+  /** e.g. "Rendering: KPF" or "Photo: City of Austin". */
+  imageCredit?: string;
   /** Short label for where the geometry came from, e.g. "Site plan boundary". */
   footprint?: string;
   segments?: string;

@@ -5,6 +5,8 @@ import type { ClosureFeature, DataMeta, ProjectCollection, ProjectFeature, Sourc
 import { ADDITIONS, LIGHT_RAIL, OVERRIDES, type Override } from './curated.ts';
 import { COA, queryLayer } from './lib/arcgis.ts';
 import { mergeLines } from './lib/geo.ts';
+import { tagChanges, type History } from './lib/history.ts';
+import { localizeImages, missingImages, writeImageReport } from './lib/images.ts';
 import { makeProject, type ProjectInput } from './lib/project.ts';
 import { fetchCapitalProjects } from './sources/capital-projects.ts';
 import { fetchDriveTexas, fetchWorkZones } from './sources/closures.ts';
@@ -15,6 +17,8 @@ import { fetchTxdot } from './sources/txdot.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SNAPSHOTS = path.join(ROOT, 'data/snapshots');
+const IMAGE_CACHE = path.join(ROOT, 'data/image-cache');
+const HISTORY = path.join(ROOT, 'data/history.json');
 const OUT = path.join(ROOT, 'public/data');
 
 interface Source<F extends Feature = ProjectFeature> {
@@ -121,6 +125,18 @@ async function main() {
     seen.add(f.properties.id);
     return true;
   });
+
+  const history = await readFile(HISTORY, 'utf8').then((s) => JSON.parse(s) as History, () => undefined);
+  // Houses churn by the hundred each week, so recent changes cover the bigger projects only.
+  const tracked = features.filter((f) => !f.properties.small);
+  await writeFile(HISTORY, JSON.stringify(tagChanges(tracked, history)));
+  const changed = tracked.filter((f) => f.properties.change);
+  console.log(`Last two weeks: ${['new', 'started', 'finished'].map((c) => `${changed.filter((f) => f.properties.change === c).length} ${c}`).join(', ')}${history ? '' : ' (first build with history)'}`);
+
+  const images = await localizeImages(features, IMAGE_CACHE, path.join(OUT, 'images'));
+  images.missing = missingImages(features);
+  await writeImageReport(images, path.join(ROOT, 'data/image-report.md'));
+  console.log(`Images: ${features.filter((f) => f.properties.image).length} saved, ${images.failed.length} failed, ${images.missing.length} big projects without one`);
 
   // Houses are most of the rows but opt-in on the map, so they ship in their own file.
   const files: Record<string, ProjectFeature[]> = {
