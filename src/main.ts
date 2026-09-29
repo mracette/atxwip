@@ -653,7 +653,7 @@ $('about-btn').addEventListener('click', () => {
       <li>Zoomed out, projects gather into numbered circles. Click one to zoom in.</li>
       <li>Turn on <strong>today's lane closures</strong> under Transportation to see streets with work crews in them. Thin solid orange lines are fully closed; dotted lines have some lanes open.</li>
     </ul>
-    <p class="caption">Source code on <a href="https://github.com/mracette/austin-wip" target="_blank" rel="noopener">GitHub</a>.</p>`;
+    <p class="caption">Source code on <a href="https://github.com/mracette/atxwip" target="_blank" rel="noopener">GitHub</a>.</p>`;
   $<HTMLDialogElement>('about').showModal();
 });
 $('about').addEventListener('click', (e) => {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import type { ProjectFeature } from '../../src/types.ts';
 
-const UA = 'austin-wip/0.1 (+https://github.com/mracette/austin-wip)';
+const UA = 'atxwip/0.1 (+https://github.com/mracette/atxwip)';
 const WIDTH = 960;
 /** Anything narrower is a thumbnail or an icon, not something worth a panel hero. */
 const MIN_WIDTH = 480;

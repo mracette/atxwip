@@ -47,7 +47,7 @@ const SOURCES: Source[] = [
   { id: 'mobility', name: 'Austin Transportation & Public Works projects', url: 'https://services.arcgis.com/0L95CJ0VTaxqcmED/arcgis/rest/services/Moped_Project_Components_Complete_and_Construction_(Public_view)/FeatureServer', fetch: fetchMobility, minCount: 10 },
   { id: 'trails', name: 'City of Austin Urban Trails', url: 'https://data.austintexas.gov/d/jdwm-wfps', fetch: () => fetchTrails(), minCount: 10 },
   { id: 'light-rail', name: 'Austin Light Rail Phase 1 route (City of Austin GIS)', url: 'https://www.atptx.org/light-rail', fetch: fetchLightRail, minCount: 1 },
-  { id: 'curated', name: 'Hand-checked major projects', url: 'https://github.com/mracette/austin-wip/blob/main/scripts/curated.ts', fetch: fetchCurated, minCount: 1 },
+  { id: 'curated', name: 'Hand-checked major projects', url: 'https://github.com/mracette/atxwip/blob/main/scripts/curated.ts', fetch: fetchCurated, minCount: 1 },
 ];
 
 // Closures describe today, so an old snapshot would show crews that have gone home.

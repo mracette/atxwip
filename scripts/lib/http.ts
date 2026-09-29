@@ -1,4 +1,4 @@
-const UA = 'austin-wip/0.1 (+https://github.com/mracette/austin-wip)';
+const UA = 'atxwip/0.1 (+https://github.com/mracette/atxwip)';
 
 export async function fetchJson<T = unknown>(url: string, init: RequestInit & { timeoutMs?: number; retries?: number } = {}): Promise<T> {
   const { timeoutMs = 120_000, retries = 3, ...rest } = init;
