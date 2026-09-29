@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Austin WIP</title>
+    <meta name="description" content="A map of what's being built around Austin: new housing, towers, I-35, civic projects and trails, from city permits and public project data." />
+    <script>
+      try {
+        const saved = localStorage.getItem('theme');
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch { document.documentElement.dataset.theme = 'light'; }
+    </script>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="map" aria-label="Map of construction projects in Austin"></div>
+
+    <header class="card header">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M10 0.5v6M10 13.5v6M0.5 10h6M13.5 10h6" stroke="var(--accent)" stroke-width="1.5" />
+          <circle cx="10" cy="10" r="1.6" fill="var(--accent)" />
+        </svg>
+        <div>
+          <h1 class="wordmark">Austin WIP</h1>
+          <p class="counter" id="counter" aria-live="polite">Loading projects…</p>
+        </div>
+      </div>
+      <div class="search">
+        <input id="search" type="search" placeholder="Search projects or addresses" autocomplete="off" aria-label="Search projects" />
+        <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="about-btn" type="button" aria-label="About and data sources">?</button>
+        <button class="icon-btn" id="theme-btn" type="button" aria-label="Toggle dark mode">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2a8 8 0 1 0 0 16z" fill="currentColor" /><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="card legend" id="legend" aria-label="Layers">
+      <button class="legend-toggle" id="legend-toggle" type="button" aria-expanded="true">
+        <span class="eyebrow">Layers</span>
+        <span class="chev" aria-hidden="true">▾</span>
+      </button>
+      <div class="legend-body" id="legend-body">
+        <div id="category-rows"></div>
+        <div class="tick-rule" aria-hidden="true"></div>
+        <div class="status-seg" id="status-seg" role="group" aria-label="Status"></div>
+        <div class="tick-rule" aria-hidden="true"></div>
+        <div class="view-row">
+          <button class="text-btn" id="pitch-btn" type="button">2D</button>
+          <button class="text-btn" id="reset-btn" type="button">Reset view</button>
+        </div>
+        <p class="caption legend-note">Buildings rise to their permitted floor count (about 3.6 m a floor). Large sites and projects without a floor count stay flat.</p>
+      </div>
+    </section>
+
+    <aside class="panel card" id="panel" aria-label="Project details" hidden>
+      <button class="grabber" id="grabber" type="button" aria-label="Expand details"></button>
+      <div class="panel-scroll" id="panel-content"></div>
+    </aside>
+
+    <dialog class="about card" id="about">
+      <div id="about-content"></div>
+    </dialog>
+
+    <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

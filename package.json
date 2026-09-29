@@ -1,0 +1,27 @@
+{
+  "name": "austin-wip",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test 'scripts/**/*.test.ts' 'src/**/*.test.ts'",
+    "data": "tsx scripts/build-data.ts"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.11.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
