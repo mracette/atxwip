@@ -382,18 +382,30 @@ function pick(point: maplibregl.PointLike): MapGeoJSONFeature | undefined {
   return map.queryRenderedFeatures([[x - pad, y - pad], [x + pad, y + pad]], { layers })[0];
 }
 
+/** Where the mouse last was over the map, so hover can be re-checked after the map moves under a still cursor. */
+let pointer: { point: maplibregl.Point; clientX: number; clientY: number } | null = null;
+
 map.on('mousemove', (e) => {
-  const f = pick(e.point);
+  pointer = { point: e.point, clientX: e.originalEvent.clientX, clientY: e.originalEvent.clientY };
+  updateHover();
+});
+// A click-to-zoom moves the map without moving the mouse; re-check what's under it once the map settles.
+map.on('movestart', () => (tooltip.hidden = true));
+map.on('idle', () => pointer && updateHover());
+
+function updateHover() {
+  if (!pointer) return;
+  const { point } = pointer;
+  const f = pick(point);
   const id = (f?.properties.id as string | undefined) ?? null;
   if (id !== state.hovered) {
     setFeatureState(state.hovered, 'hover', false);
     setFeatureState(id, 'hover', true);
     state.hovered = id;
   }
-  map.getCanvas().style.cursor = f ? 'pointer' : '';
-  const cluster = map.queryRenderedFeatures(e.point, { layers: ['proj-cluster'] })[0];
-  if (cluster) map.getCanvas().style.cursor = 'zoom-in';
-  const closure = f ? undefined : pickClosure(e.point);
+  const cluster = map.getLayer('proj-cluster') && map.queryRenderedFeatures(point, { layers: ['proj-cluster'] })[0];
+  map.getCanvas().style.cursor = f || cluster ? 'pointer' : '';
+  const closure = f ? undefined : pickClosure(point);
   if (closure?.id !== hoveredClosure) {
     if (hoveredClosure !== undefined) map.setFeatureState({ source: CLOSURES, id: hoveredClosure }, { hover: false });
     if (closure?.id !== undefined) map.setFeatureState({ source: CLOSURES, id: closure.id }, { hover: true });
@@ -411,10 +423,10 @@ map.on('mousemove', (e) => {
     const what = c.impact === 'closed' ? 'Road closed' : 'Lanes closed';
     tooltip.innerHTML = `${esc(c.road)}${c.work ? `<span class="sub-line">${esc(c.work)}</span>` : ''}<span class="sub">${what}${c.end ? ` until ${esc(fmtWhen(c.end))}` : ''} · ${c.by === 'txdot' ? 'TxDOT' : 'City permit'}</span>`;
   }
-  tooltip.style.left = `${e.originalEvent.clientX + 14}px`;
-  tooltip.style.top = `${e.originalEvent.clientY + 14}px`;
+  tooltip.style.left = `${pointer.clientX + 14}px`;
+  tooltip.style.top = `${pointer.clientY + 14}px`;
   tooltip.hidden = false;
-});
+}
 function pickClosure(point: maplibregl.Point): MapGeoJSONFeature | undefined {
   const layers = CLOSURE_LAYERS.filter((l) => map.getLayer(l));
   if (!layers.length || !state.showClosures) return undefined;
@@ -423,6 +435,7 @@ function pickClosure(point: maplibregl.Point): MapGeoJSONFeature | undefined {
 }
 
 map.getCanvas().addEventListener('mouseleave', () => {
+  pointer = null;
   tooltip.hidden = true;
   if (hoveredClosure !== undefined) map.setFeatureState({ source: CLOSURES, id: hoveredClosure }, { hover: false });
   hoveredClosure = undefined;
