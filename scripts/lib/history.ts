@@ -48,7 +48,8 @@ export function tagChanges(features: ProjectFeature[], history: History | undefi
     if (p.status === 'complete' && recent(p.end, now)) tag(f, 'finished', p.end!);
     else if (p.status === 'active' && recent(p.start, now)) tag(f, 'started', p.start!);
     else if (p.status === 'planned' && recent(p.filed, now)) tag(f, 'new', p.filed!);
-    else if (first !== next.baseline && recent(first, now)) tag(f, 'new', first);
+    // A project that broke ground before it reached the data arrived through a source or filter change, not a filing.
+    else if (first !== next.baseline && recent(first, now) && !p.start) tag(f, 'new', first);
   }
   return next;
 }

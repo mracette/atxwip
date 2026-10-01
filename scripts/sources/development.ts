@@ -17,10 +17,13 @@ const PARCEL_SOURCE: Link = { label: 'Travis Central Appraisal District parcels'
 const FLAT_AREA = 6e-6;
 /** Valuations under this are placeholders ($1, $1,000) rather than real estimates. */
 const MIN_REAL_VALUATION = 50_000;
+/** Additions and remodels of existing commercial buildings count as projects at this valuation; below it they're mostly patios and tenant finish-outs. */
+const MIN_ALTERATION_VALUATION = 300_000;
 
 const Permit = z.object({
   PERMIT_NUMBER: z.string(),
   SUB_TYPE: z.string(),
+  WORK_TYPE: z.string(),
   PERMIT_LOCATION: z.string().nullish(),
   TCAD_ID: z.string().nullish(),
   ISSUE_DATE: z.number().nullish(),
@@ -135,6 +138,7 @@ function summarize(permits: Permit[]) {
     end: status === 'complete' && finals.length ? isoDate(Math.max(...finals)) : undefined,
     status,
     description: permits.map((p) => p.WORK_DESCRIPTION).find(Boolean),
+    existingBuilding: permits.every((p) => p.WORK_TYPE !== 'New'),
   };
 }
 
@@ -146,8 +150,11 @@ function permitLinks(permits: Permit[]): Link[] {
 
 async function fetchPermits(since: Date): Promise<Permit[]> {
   const raw = await queryLayer(PERMITS, {
-    where: `ISSUE_DATE >= ${sqlTimestamp(since)} AND WORK_TYPE = 'New' AND STATUS IN ('Active','Final')
-      AND (SUB_TYPE LIKE 'C-%' OR SUB_TYPE LIKE 'R- 10%') AND SUB_TYPE NOT LIKE 'C- 329%' AND SUB_TYPE NOT LIKE 'C- 330%'`,
+    where: `ISSUE_DATE >= ${sqlTimestamp(since)} AND STATUS IN ('Active','Final')
+      AND (SUB_TYPE LIKE 'C-%' OR SUB_TYPE LIKE 'R- 10%') AND SUB_TYPE NOT LIKE 'C- 329%' AND SUB_TYPE NOT LIKE 'C- 330%'
+      AND (WORK_TYPE = 'New' OR (WORK_TYPE IN ('Addition','Addition and Remodel') AND SUB_TYPE LIKE 'C-%'
+        AND SUB_TYPE NOT LIKE 'C- 101%' AND SUB_TYPE NOT LIKE 'C- 102%' AND SUB_TYPE NOT LIKE 'C- 103%'
+        AND TOTAL_JOB_VALUATION >= ${MIN_ALTERATION_VALUATION}))`,
     outFields: Object.keys(Permit.shape),
     pageSize: 2000,
   });
@@ -272,7 +279,7 @@ export async function fetchDevelopment(now = new Date()): Promise<ProjectFeature
       address: ps?.[0]?.PERMIT_LOCATION ? baseAddress(ps[0].PERMIT_LOCATION) : undefined,
       permit: ps ? (ps.length > 1 ? `${ps.length} buildings` : ps[0]!.PERMIT_NUMBER) : plan.CASE_NUMBER,
       footprint: 'Site plan boundary',
-      flat: area(plan.geometry) > FLAT_AREA || undefined,
+      flat: area(plan.geometry) > FLAT_AREA || s?.existingBuilding || undefined,
       links,
       sources: ps ? [SITE_PLAN_SOURCE, PERMIT_SOURCE] : [SITE_PLAN_SOURCE],
     }));
@@ -301,7 +308,7 @@ export async function fetchDevelopment(now = new Date()): Promise<ProjectFeature
       address,
       permit: ps.length > 1 ? `${ps.length} buildings` : ps[0]!.PERMIT_NUMBER,
       footprint: covers ? 'Parcel boundary' : undefined,
-      flat: (covers && area(parcel) > FLAT_AREA) || undefined,
+      flat: (covers && (area(parcel) > FLAT_AREA || s.existingBuilding)) || undefined,
       links: permitLinks(ps),
       sources: covers ? [PERMIT_SOURCE, PARCEL_SOURCE] : [PERMIT_SOURCE],
     }));

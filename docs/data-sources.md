@@ -27,6 +27,10 @@ or returns suspiciously few rows. In CI the snapshots live in the Actions cache.
 
 1. New building permits from the last two years: `WORK_TYPE = 'New'`, status
    Active or Final, excluding `C- 329`/`C- 330` (EV chargers, pergolas, pools).
+   Commercial additions and remodels (`WORK_TYPE` "Addition" or "Addition and
+   Remodel") also count at $300k or more, so reuse of an existing building
+   shows up. Projects made only of these are drawn flat, since the building
+   is already there.
 2. Houses, ADUs and duplexes (`R- 101/102/103`, `C- 101/103`) become one point
    each and ship separately in `homes.json`, which the map only loads when the
    viewer opts in.
@@ -90,7 +94,8 @@ Status: any Active permit makes a project "under construction"; all Final means
   site plan application date, or failing that the day a project first appeared
   in the data. `data/history.json` (Actions cache) remembers first appearances.
   Houses are left out, and a build that adds more than 150 projects at once is
-  treated as a data change rather than news.
+  treated as a data change rather than news. A newly seen project whose
+  construction already started is not tagged "plans filed" either.
 - **Floor counts** are typed by hand on permits and sometimes hold nonsense (a
   house at 1,463 floors); anything over 80, or over 5 for a house, is dropped.
 - **OpenStreetMap context buildings** that a curated project draws itself are

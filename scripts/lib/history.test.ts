@@ -28,6 +28,13 @@ test('projects that appear after the first build are new, but not the ones seen 
   assert.deepEqual(fs.map((f) => f.properties.change), [undefined, 'new']);
 });
 
+test('a project that broke ground before it first appeared is not new', () => {
+  const history = tagChanges([project({ id: 'old' })], undefined, new Date('2026-10-01T12:00:00Z'));
+  const fs = [project({ id: 'late', status: 'active', start: '2026-06-08' }), project({ id: 'undated', status: 'active' })];
+  tagChanges(fs, history, now);
+  assert.deepEqual(fs.map((f) => f.properties.change), [undefined, 'new']);
+});
+
 test('a flood of arrivals is treated as a data change, not a busy week', () => {
   const history = tagChanges([project({ id: 'old' })], undefined, new Date('2026-10-01T12:00:00Z'));
   const fs = Array.from({ length: 200 }, (_, i) => project({ id: `p${i}` }));
