@@ -433,19 +433,20 @@ body:has(.panel:not([hidden])) .maplibregl-ctrl-bottom-right { right: calc(var(-
   .panel[data-detent='half'] { --sheet-h: 52dvh; }
   .panel[data-detent='full'] { --sheet-h: calc(100dvh - 64px); }
   .panel[data-detent='peek'] .panel-scroll { overflow: hidden; }
+  .panel-scroll { overscroll-behavior: contain; }
   @keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
   .grabber {
     display: block;
     flex-shrink: 0;
     width: 100%;
-    height: 22px;
+    height: 28px;
     border: 0;
     background: none;
     cursor: grab;
     touch-action: none;
     position: relative;
   }
-  .grabber::after { content: ''; position: absolute; left: 50%; top: 9px; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line); }
+  .grabber::after { content: ''; position: absolute; left: 50%; top: 12px; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--line); }
   .panel-scroll { padding-top: 0; }
   .panel-title { font-size: var(--fs-xl); line-height: 28px; }
   .maplibregl-ctrl-bottom-right { margin-bottom: 0; }

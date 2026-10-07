@@ -446,7 +446,7 @@ map.getCanvas().addEventListener('mouseleave', () => {
 /* ---------- Selection + panel ---------- */
 
 const panel = $('panel');
-const sheet = initSheet(panel, $('grabber'));
+const sheet = initSheet(panel, $('grabber'), $('panel-content'));
 
 function corridorOf(f: ProjectFeature): ProjectFeature[] {
   const c = f.properties.corridor;
