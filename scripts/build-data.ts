@@ -1,10 +1,11 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Feature, Geometry } from 'geojson';
 import type { ClosureFeature, DataMeta, ProjectCollection, ProjectFeature, SourceMeta } from '../src/types.ts';
 import { ADDITIONS, LIGHT_RAIL, OVERRIDES, type Override } from './curated.ts';
 import { COA, queryLayer } from './lib/arcgis.ts';
 import { mergeLines } from './lib/geo.ts';
+import { assessHealth, healthReport, type FailingSince, type SourceRun } from './lib/health.ts';
 import { tagChanges, type History } from './lib/history.ts';
 import { localizeImages, missingImages, writeImageReport } from './lib/images.ts';
 import { makeProject, type ProjectInput } from './lib/project.ts';
@@ -19,6 +20,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const SNAPSHOTS = path.join(ROOT, 'data/snapshots');
 const IMAGE_CACHE = path.join(ROOT, 'data/image-cache');
 const HISTORY = path.join(ROOT, 'data/history.json');
+const FAILING_SINCE = path.join(ROOT, 'data/failing-since.json');
+const SOURCE_REPORT = path.join(ROOT, 'data/source-report.md');
+const STALE_FLAG = path.join(ROOT, 'data/stale-sources.txt');
+/** Source ids to treat as failed, for rehearsing the alert from a manual workflow run. */
+const REHEARSE_FAILURE = new Set((process.env.REHEARSE_FAILURE ?? '').split(',').map((s) => s.trim()).filter(Boolean));
 const OUT = path.join(ROOT, 'public/data');
 
 interface Source<F extends Feature = ProjectFeature> {
@@ -74,9 +80,10 @@ async function readSnapshot<F extends Feature>(id: string): Promise<Snapshot<F> 
  * Fetches a source, keeping its last good snapshot when the upstream fails
  * or returns implausibly little. One broken API never blanks the map.
  */
-async function runSource<F extends Feature>(s: Source<F>, maxSnapshotAgeMs = Infinity): Promise<{ features: F[]; meta: SourceMeta; ok: boolean }> {
+async function runSource<F extends Feature>(s: Source<F>, maxSnapshotAgeMs = Infinity): Promise<{ features: F[]; meta: SourceMeta; ok: boolean; error?: string }> {
   const started = Date.now();
   try {
+    if (REHEARSE_FAILURE.has(s.id)) throw new Error('rehearsal: this source was told to fail');
     const features = await s.fetch();
     if (features.length < s.minCount) throw new Error(`only ${features.length} features (expected ≥ ${s.minCount})`);
     const fetchedAt = new Date().toISOString();
@@ -88,7 +95,7 @@ async function runSource<F extends Feature>(s: Source<F>, maxSnapshotAgeMs = Inf
     const snap = found && Date.now() - Date.parse(found.fetchedAt) <= maxSnapshotAgeMs ? found : undefined;
     console.warn(`✗ ${s.id}: ${(err as Error).message}${snap ? ` (using snapshot from ${snap.fetchedAt})` : ' (no snapshot)'}`);
     const features = snap?.features ?? [];
-    return { features, ok: false, meta: { id: s.id, name: s.name, url: s.url, count: features.length, fetchedAt: snap?.fetchedAt ?? '' } };
+    return { features, ok: false, error: (err as Error).message, meta: { id: s.id, name: s.name, url: s.url, count: features.length, fetchedAt: snap?.fetchedAt ?? '' } };
   }
 }
 
@@ -162,7 +169,26 @@ async function main() {
     closureSources: closureResults.map((r) => r.meta),
   };
   await writeFile(path.join(OUT, 'meta.json'), JSON.stringify(meta, null, 2));
+  await reportHealth([...results, ...closureResults]);
   if (results.every((r) => !r.ok)) process.exitCode = 1;
+}
+
+/** Writes the issue body and stale-source list that the workflow turns into an alert. */
+async function reportHealth(results: { ok: boolean; error?: string; meta: SourceMeta }[]) {
+  const runs: SourceRun[] = results.map((r) => ({ ...r.meta, ok: r.ok, error: r.error }));
+  const previous = await readFile(FAILING_SINCE, 'utf8').then((s) => JSON.parse(s) as FailingSince, () => ({}));
+  const health = assessHealth(runs, previous);
+  await writeFile(FAILING_SINCE, JSON.stringify(health.failingSince));
+  await rm(SOURCE_REPORT, { force: true });
+  await rm(STALE_FLAG, { force: true });
+  if (!health.problems.length) return;
+  const { GITHUB_SERVER_URL: server, GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: run } = process.env;
+  const runUrl = server && repo && run ? `${server}/${repo}/actions/runs/${run}` : undefined;
+  let body = healthReport(health, process.env.GITHUB_REPOSITORY_OWNER ?? 'mracette', runUrl);
+  if (driveTexasKey) body = body.replaceAll(driveTexasKey, '***');
+  await writeFile(SOURCE_REPORT, body);
+  if (health.stale.length) await writeFile(STALE_FLAG, health.stale.join('\n'));
+  console.warn(`Failing sources: ${health.problems.map((p) => `${p.id} (${p.days}d)`).join(', ')}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();

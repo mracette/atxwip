@@ -9,6 +9,13 @@ Each source is a module in `scripts/sources/` that returns project features.
 `data/snapshots/<id>.json`, and falls back to that snapshot when a source fails
 or returns suspiciously few rows. In CI the snapshots live in the Actions cache.
 
+When any source falls back, the daily run opens (or updates) a GitHub issue
+titled "Data source problems" that @mentions the repo owner, so GitHub emails
+them, and closes it once every source fetches cleanly again. A source that has
+been failing for 7 days also fails the run after deploying, which sends
+GitHub's failed-run email. To check the alert end to end, run the workflow by
+hand with `rehearse_failure` set to a source id such as `trails`.
+
 | Source | Module | Map layer | Volume |
 |---|---|---|---|
 | City of Austin building permits (ArcGIS copy of Socrata `3syk-w9eu`) | `development.ts` | Residential, commercial, civic buildings; houses | ~5k permits → ~750 projects + ~4.5k homes |

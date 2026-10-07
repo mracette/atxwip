@@ -7,6 +7,11 @@ on:
     # 11:30 UTC daily, after the city's overnight permit and site plan rebuilds.
     - cron: '30 11 * * *'
   workflow_dispatch:
+    inputs:
+      rehearse_failure:
+        description: 'Source ids to treat as failed (comma-separated), to check that the alert issue and email arrive'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -21,6 +26,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      stale: ${{ steps.health.outputs.stale }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -38,12 +45,14 @@ jobs:
             data/snapshots
             data/image-cache
             data/history.json
+            data/failing-since.json
           key: snapshots-${{ github.run_id }}
           restore-keys: snapshots-
       - run: npm run data
         env:
           # Optional. Without it, TxDOT highway closures are skipped and only city work zones ship.
           DRIVETEXAS_API_KEY: ${{ secrets.DRIVETEXAS_API_KEY }}
+          REHEARSE_FAILURE: ${{ inputs.rehearse_failure }}
       - uses: actions/cache/save@v6
         if: always()
         with:
@@ -51,6 +60,7 @@ jobs:
             data/snapshots
             data/image-cache
             data/history.json
+            data/failing-since.json
           key: snapshots-${{ github.run_id }}
       - name: Update the project images to-do issue
         if: github.event_name != 'pull_request' && hashFiles('data/image-report.md') != ''
@@ -61,6 +71,28 @@ jobs:
           n=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
           if [ -n "$n" ]; then gh issue edit "$n" --body-file data/image-report.md
           else gh issue create --title "$title" --body-file data/image-report.md; fi
+      # The issue @mentions the owner so GitHub emails them; editing an issue body alone sends nothing.
+      - name: Open, update or close the data source problems issue
+        id: health
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title='Data source problems'
+          n=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -f data/source-report.md ]; then
+            if [ -z "$n" ]; then
+              gh issue create --title "$title" --body-file data/source-report.md
+            else
+              before=$(gh issue view "$n" --json body --jq .body | head -1)
+              gh issue edit "$n" --body-file data/source-report.md
+              if [ "$before" != "$(head -1 data/source-report.md)" ]; then
+                gh issue comment "$n" --body "@${{ github.repository_owner }} the set of failing sources changed; the list above is current."
+              fi
+            fi
+          elif [ -n "$n" ]; then
+            gh issue close "$n" --comment "Every data source fetched cleanly in ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}."
+          fi
+          if [ -f data/stale-sources.txt ]; then echo "stale=$(paste -sd, data/stale-sources.txt)" >> "$GITHUB_OUTPUT"; fi
       # Served from the root of atxwip.info, so the default base path of / applies.
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
@@ -76,3 +108,13 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # Runs after deploy so fresh data from the healthy sources still ships.
+  stale-data:
+    needs: [build, deploy]
+    if: needs.build.outputs.stale != ''
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Failing for a week or more: ${{ needs.build.outputs.stale }}. See the open 'Data source problems' issue."
+          exit 1
