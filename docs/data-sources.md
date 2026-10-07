@@ -16,6 +16,10 @@ been failing for 7 days also fails the run after deploying, which sends
 GitHub's failed-run email. To check the alert end to end, run the workflow by
 hand with `rehearse_failure` set to a source id such as `trails`.
 
+GitHub disables a public repo's scheduled workflows after 60 days without
+activity. Each scheduled run re-enables its own workflow to count as activity,
+so the daily refresh keeps going even when nobody pushes.
+
 | Source | Module | Map layer | Volume |
 |---|---|---|---|
 | City of Austin building permits (ArcGIS copy of Socrata `3syk-w9eu`) | `development.ts` | Residential, commercial, civic buildings; houses | ~5k permits → ~750 projects + ~4.5k homes |

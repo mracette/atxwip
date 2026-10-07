@@ -14,6 +14,7 @@ on:
         default: ''
 
 permissions:
+  actions: write
   contents: read
   pages: write
   id-token: write
@@ -71,6 +72,12 @@ jobs:
           n=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
           if [ -n "$n" ]; then gh issue edit "$n" --body-file data/image-report.md
           else gh issue create --title "$title" --body-file data/image-report.md; fi
+      # GitHub turns off a public repo's schedule after 60 days without activity, and nothing commits here.
+      # Re-enabling the workflow counts as activity, so the daily refresh never lapses.
+      - name: Keep the daily schedule alive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable deploy.yml --repo ${{ github.repository }}
       # The issue @mentions the owner so GitHub emails them; editing an issue body alone sends nothing.
       - name: Open, update or close the data source problems issue
         id: health
